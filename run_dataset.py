@@ -5,6 +5,8 @@ import cv2
 from subprocess import call
 import os
 
+NUM_IMAGES = 45568
+
 #check if on windows OS
 windows = False
 if os.name == 'nt':
@@ -26,7 +28,7 @@ while(cv2.waitKey(10) != ord('q')):
     degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})[0][0] * 180.0 / 3.14159265
     if not windows:
         call("clear")
-    print("Predicted steering angle: " + str(degrees) + " degrees")
+    print(f"Predicted steering angle ({i} / {NUM_IMAGES}): {degrees} degrees")
     cv2.imshow("frame", full_image)
     #make smooth angle transitions by turning the steering wheel based on the difference of the current angle
     #and the predicted angle
