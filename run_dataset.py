@@ -5,7 +5,7 @@ import cv2
 from subprocess import call
 import os
 
-NUM_IMAGES = 45568
+NUM_IMAGES = 45406
 
 #check if on windows OS
 windows = False

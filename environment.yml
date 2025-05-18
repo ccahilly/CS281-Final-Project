@@ -12,3 +12,6 @@ dependencies:
     - opencv-python
     - matplotlib
     - tensorboard
+    - tqdm
+    - pandas
+    - scikit-learn
