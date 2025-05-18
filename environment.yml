@@ -1,0 +1,14 @@
+name: cs281-final-project
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  - numpy
+  - scipy
+  - pip:
+    - tensorflow>=2.13.0  # Use the latest available version for Mac
+    - opencv-python
+    - matplotlib
+    - tensorboard
