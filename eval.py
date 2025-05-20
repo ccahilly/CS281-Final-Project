@@ -8,7 +8,8 @@ import model
 import cv2
 from tqdm import tqdm
 
-NUM_IMAGES = 45406
+# NUM_IMAGES = 45406
+NUM_IMAGES = 63825
 OUTPUT_FILE = "output/predicted_angles.txt"
 
 # Make sure output directory exists
@@ -25,7 +26,7 @@ with open("driving_dataset/data.txt") as f:
     for line in f:
         true_angles_degrees.append(float(line.split(" ")[1]))
 print(len(true_angles_degrees))
-assert len(true_angles_degrees) == NUM_IMAGES, "Mismatch between number of images and angles in data.txt"
+assert len(true_angles_degrees) == NUM_IMAGES, f"Mismatch between number of images {NUM_IMAGES} and angles in data.txt {len(true_angles_degrees)}"
 
 # Open the output file once before the loop
 with open(OUTPUT_FILE, "w") as f:
@@ -36,6 +37,7 @@ with open(OUTPUT_FILE, "w") as f:
         full_image = cv2.imread("driving_dataset/" + str(i) + ".jpg")
         image = cv2.resize(full_image[-150:], (200, 66)) / 255.0
         predicted_angle_degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})[0][0] * 180.0 / 3.14159265
+
         
         # Update progress bar description every 100 images
         if i % 100 == 0:
