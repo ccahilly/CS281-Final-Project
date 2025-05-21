@@ -8,8 +8,13 @@ import model
 import cv2
 from tqdm import tqdm
 
-# NUM_IMAGES = 45406
-NUM_IMAGES = 63825
+
+# NUM_IMAGES = 63825
+# dataset = "driving_dataset"
+
+dataset = "driving_dataset_2"
+NUM_IMAGES = 45406
+
 OUTPUT_FILE = "output/predicted_angles.txt"
 
 # Make sure output directory exists
@@ -22,7 +27,7 @@ saver.restore(sess, "save/model.ckpt")
 # Get the true angle from the data.txt file
 # Example line of data.txt: "23.jpg 11.700000"
 true_angles_degrees = []
-with open("driving_dataset/data.txt") as f:
+with open(f"{dataset}/data.txt") as f:
     for line in f:
         true_angles_degrees.append(float(line.split(" ")[1]))
 print(len(true_angles_degrees))
@@ -34,7 +39,7 @@ with open(OUTPUT_FILE, "w") as f:
     progress_bar = tqdm(range(NUM_IMAGES), desc="Processing images", unit="img")
     f.write(f"image_number,predicted_angle,true_angle\n")  # Write header to the file
     for i in progress_bar:
-        full_image = cv2.imread("driving_dataset/" + str(i) + ".jpg")
+        full_image = cv2.imread(f"{dataset}/" + str(i) + ".jpg")
         image = cv2.resize(full_image[-150:], (200, 66)) / 255.0
         predicted_angle_degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})[0][0] * 180.0 / 3.14159265
 
