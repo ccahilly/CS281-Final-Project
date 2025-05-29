@@ -1,6 +1,6 @@
 # Explaining Rider vs. Person Classification for Detectron2 Cityscapes Mask RNN
 
-# About [Detectron 2](https://github.com/facebookresearch/detectron2).
+## About [Detectron 2](https://github.com/facebookresearch/detectron2)
 
 <img src=".github/Detectron2-Logo-Horz.svg" width="300" >
 
@@ -16,21 +16,14 @@ It supports a number of computer vision research projects and production applica
 </div>
 <br>
 
-## Learn More about Detectron2
+## Set Up
 
-* Includes new capabilities such as panoptic segmentation, Densepose, Cascade R-CNN, rotated bounding boxes, PointRend,
-  DeepLab, ViTDet, MViTv2 etc.
-* Used as a library to support building [research projects](projects/) on top of it.
-* Models can be exported to TorchScript format or Caffe2 format for deployment.
-* It [trains much faster](https://detectron2.readthedocs.io/notes/benchmarks.html).
-
-See our [blog post](https://ai.meta.com/blog/-detectron2-a-pytorch-based-modular-object-detection-library-/)
-to see more demos.
-See this [interview](https://ai.meta.com/blog/detectron-everingham-prize/) to learn more about the stories behind detectron2.
-
-## Installation
-
-See [installation instructions](https://detectron2.readthedocs.io/tutorials/install.html).
+First, install Detectron2:
+Then, download the Cityscapes dataset.
+Lastly, install the Cityscapes scripts.
+```
+python -m pip install cityscapesscripts
+```
 
 ## Getting Started
 
