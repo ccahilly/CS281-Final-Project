@@ -25,7 +25,7 @@ cd CS281-Final-Project
 python -m pip install -e .
 ```
 
-Then, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`).
+Then, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`). Place `leftImg8bit` and `gtFine` in `datasets/cityscapes`.
 
 Lastly, install the [Cityscapes scripts](https://github.com/mcordts/cityscapesScripts):
 ```
