@@ -18,6 +18,8 @@ It supports a number of computer vision research projects and production applica
 
 ## Set Up
 
+
+
 First, install Detectron2:
 ```
 git clone git@github.com:ccahilly/CS281-Final-Project.git
@@ -25,12 +27,12 @@ cd CS281-Final-Project
 python -m pip install -e .
 ```
 
-Then, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`). Place `leftImg8bit` and `gtFine` in `datasets/cityscapes`.
+Set up the conda environemnt:
+```
+conda env create -f detectron_environment.yml -n detectron
+```
 
-Lastly, install the [Cityscapes scripts](https://github.com/mcordts/cityscapesScripts):
-```
-python -m pip install cityscapesscripts
-```
+Lastly, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`). Place `leftImg8bit` and `gtFine` in `datasets/cityscapes`.
 
 ## Getting Started
 
