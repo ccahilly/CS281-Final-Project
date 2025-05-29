@@ -19,8 +19,15 @@ It supports a number of computer vision research projects and production applica
 ## Set Up
 
 First, install Detectron2:
-Then, download the Cityscapes dataset.
-Lastly, install the [Cityscapes scripts](https://github.com/mcordts/cityscapesScripts).
+```
+git clone git@github.com:ccahilly/CS281-Final-Project.git
+cd CS281-Final-Project
+python -m pip install -e .
+```
+
+Then, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`).
+
+Lastly, install the [Cityscapes scripts](https://github.com/mcordts/cityscapesScripts):
 ```
 python -m pip install cityscapesscripts
 ```
