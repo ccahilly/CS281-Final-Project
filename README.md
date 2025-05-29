@@ -17,19 +17,12 @@ It supports a number of computer vision research projects and production applica
 <br>
 
 ## Set Up
-First, clone this repo:
+First, clone this repo, set up the conda environment, and install detectron2:
 ```
 git clone git@github.com:ccahilly/CS281-Final-Project.git
-```
-
-Then, set up the conda environemnt:
-```
-conda env create -f detectron_environment.yml -n detectron
-```
-
-Then, install detectron2:
-```
 cd CS281-Final-Project
+conda env create -f detectron_environment.yml -n detectron
+conda activate detectron
 python -m pip install -e .
 ```
 
