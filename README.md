@@ -20,7 +20,7 @@ It supports a number of computer vision research projects and production applica
 
 First, install Detectron2:
 Then, download the Cityscapes dataset.
-Lastly, install the Cityscapes scripts.
+Lastly, install the [Cityscapes scripts](https://github.com/mcordts/cityscapesScripts).
 ```
 python -m pip install cityscapesscripts
 ```

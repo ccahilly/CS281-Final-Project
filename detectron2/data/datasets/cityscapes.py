@@ -82,7 +82,7 @@ def load_cityscapes_instances(image_dir, gt_dir, from_json=True, to_polygons=Tru
     logger.info("Loaded {} images from {}".format(len(ret), image_dir))
 
     # Map cityscape ids to contiguous ids
-    from deeplearning.projects.cityscapesApi.cityscapesscripts.helpers.labels import labels
+    from cityscapesscripts.helpers.labels import labels
 
     labels = [l for l in labels if l.hasInstances and not l.ignoreInEval]
     dataset_id_to_contiguous_id = {l.id: idx for idx, l in enumerate(labels)}
@@ -138,7 +138,7 @@ def _cityscapes_files_to_dict(files, from_json, to_polygons):
     Returns:
         A dict in Detectron2 Dataset format.
     """
-    from deeplearning.projects.cityscapesApi.cityscapesscripts.helpers.labels import (
+    from cityscapesscripts.helpers.labels import (
         id2label,
         name2label,
     )
