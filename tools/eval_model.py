@@ -8,9 +8,11 @@ import cv2
 
 from detectron2.config import get_cfg
 from detectron2.data import build_detection_test_loader
-from detectron2.engine import DefaultPredictor
+from detectron2.engine import DefaultTrainer
+from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.evaluation import CityscapesInstanceEvaluator, inference_on_dataset
 from detectron2.utils.logger import setup_logger
+import detectron2.utils.comm as comm
 
 # Constants for evaluation configuration
 CONFIG_FILE = "configs/Cityscapes/mask_rcnn_R_50_FPN.yaml"
@@ -269,23 +271,22 @@ def main():
     logger.info(f"  Confidence threshold: {CONFIDENCE_THRESHOLD}")
     logger.info(f"  Datasets to evaluate: {cfg.DATASETS.TEST}")
     
-    # Create model
-    model = DefaultPredictor(cfg)
+    # Build model and load weights properly
+    model = DefaultTrainer.build_model(cfg)
+    DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
+        cfg.MODEL.WEIGHTS, resume=False
+    )
     
     # Evaluate each dataset
     all_results = {}
     for dataset_name in cfg.DATASETS.TEST:
         logger.info(f"\nEvaluating dataset: {dataset_name}")
         
-        # Create data loader for this dataset
-        data_loader = build_detection_test_loader(cfg, dataset_name)
-        
         # Create evaluator for this dataset
         evaluator = DetailedCityscapesEvaluator(dataset_name=dataset_name)
         
-        # Run evaluation
-        logger.info("Starting evaluation...")
-        results = inference_on_dataset(model.model, data_loader, evaluator)
+        # Run evaluation using proper testing pipeline
+        results = DefaultTrainer.test(cfg, model, evaluators=[evaluator])
         
         # Store results
         all_results[dataset_name] = results
@@ -294,6 +295,21 @@ def main():
         logger.info(f"Results for {dataset_name}:")
         for k, v in results.items():
             logger.info(f"  {k}: {v}")
+    
+    # Run test-time augmentation if enabled
+    if cfg.TEST.AUG.ENABLED:
+        logger.info("\nRunning evaluation with test-time augmentation...")
+        from detectron2.modeling import GeneralizedRCNNWithTTA
+        model = GeneralizedRCNNWithTTA(cfg, model)
+        for dataset_name in cfg.DATASETS.TEST:
+            evaluator = DetailedCityscapesEvaluator(dataset_name=dataset_name)
+            results = DefaultTrainer.test(cfg, model, evaluators=[evaluator])
+            all_results[f"{dataset_name}_TTA"] = results
+    
+    if comm.is_main_process():
+        # Verify results if we're the main process
+        from detectron2.evaluation import verify_results
+        verify_results(cfg, all_results)
     
     return all_results
 
