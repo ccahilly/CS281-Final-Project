@@ -12,6 +12,24 @@ from detectron2.engine import DefaultPredictor
 from detectron2.evaluation import CityscapesInstanceEvaluator, inference_on_dataset
 from detectron2.utils.logger import setup_logger
 
+# Constants for evaluation configuration
+CONFIG_FILE = "configs/Cityscapes/mask_rcnn_R_50_FPN.yaml"
+WEIGHTS = "detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl"
+CONFIDENCE_THRESHOLD = 0.5
+NUM_CLASSES = 8  # person, rider, car, truck, bus, train, motorcycle, bicycle
+
+# Ground truth instance counts for validation set
+GT_COUNTS = {
+    'person': 14,
+    'rider': 1,
+    'car': 47,
+    'truck': 1,
+    'bus': 1,
+    'train': 0,
+    'motorcycle': 0,
+    'bicycle': 2
+}
+
 class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
     def __init__(self, dataset_name: str):
         super().__init__(dataset_name)
@@ -123,17 +141,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             metrics.update({'TP': 0, 'FP': 0, 'FN': 0, 'total_gt': 0, 'total_pred': 0})
         
         # Set ground truth totals from dataset statistics
-        gt_counts = {
-            'person': 14,
-            'rider': 1,
-            'car': 47,
-            'truck': 1,
-            'bus': 1,
-            'train': 0,
-            'motorcycle': 0,
-            'bicycle': 2
-        }
-        for class_name, count in gt_counts.items():
+        for class_name, count in GT_COUNTS.items():
             self.metrics[class_name]['total_gt'] = count
         
         # Process each prediction
@@ -238,79 +246,56 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         iou = inter / union
         return iou
 
-def setup_cfg(args):
+def setup_cfg():
     """Create configs and perform basic setups."""
     cfg = get_cfg()
-    cfg.merge_from_file(args.config_file)
-    cfg.merge_from_list(args.opts)
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
-    cfg.MODEL.WEIGHTS = args.weights
+    cfg.merge_from_file(CONFIG_FILE)
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = CONFIDENCE_THRESHOLD
+    cfg.MODEL.WEIGHTS = WEIGHTS
     cfg.MODEL.DEVICE = "cpu"
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = NUM_CLASSES
     cfg.freeze()
     return cfg
 
-def get_parser():
-    import argparse
-    parser = argparse.ArgumentParser(description="Model Evaluation with Detailed Analysis")
-    parser.add_argument(
-        "--config-file",
-        default="configs/Cityscapes/mask_rcnn_R_50_FPN.yaml",
-        help="path to config file",
-    )
-    parser.add_argument(
-        "--eval-only",
-        action="store_true",
-        help="perform evaluation only",
-    )
-    parser.add_argument(
-        "--dataset",
-        help="name of the dataset to evaluate on",
-        default="cityscapes_fine_instance_seg_val",
-    )
-    parser.add_argument(
-        "--weights",
-        default="detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl",
-        help="path to the model weights",
-    )
-    parser.add_argument(
-        "--confidence-threshold",
-        type=float,
-        default=0.5,
-        help="minimum score for instance predictions to be shown",
-    )
-    parser.add_argument(
-        "--opts",
-        help="Modify config options using the command-line",
-        default=[],
-        nargs=argparse.REMAINDER,
-    )
-    return parser
-
-def main(args):
-    cfg = setup_cfg(args)
-    
+def main():
     # Set up logger
     logger = setup_logger()
-    logger.info("Command Line Args: %s", args)
+    
+    # Create model configuration
+    cfg = setup_cfg()
+    logger.info("Using configuration:")
+    logger.info(f"  Config file: {CONFIG_FILE}")
+    logger.info(f"  Weights: {WEIGHTS}")
+    logger.info(f"  Confidence threshold: {CONFIDENCE_THRESHOLD}")
+    logger.info(f"  Datasets to evaluate: {cfg.DATASETS.TEST}")
     
     # Create model
     model = DefaultPredictor(cfg)
     
-    # Create data loader
-    data_loader = build_detection_test_loader(cfg, args.dataset)
+    # Evaluate each dataset
+    all_results = {}
+    for dataset_name in cfg.DATASETS.TEST:
+        logger.info(f"\nEvaluating dataset: {dataset_name}")
+        
+        # Create data loader for this dataset
+        data_loader = build_detection_test_loader(cfg, dataset_name)
+        
+        # Create evaluator for this dataset
+        evaluator = DetailedCityscapesEvaluator(dataset_name=dataset_name)
+        
+        # Run evaluation
+        logger.info("Starting evaluation...")
+        results = inference_on_dataset(model.model, data_loader, evaluator)
+        
+        # Store results
+        all_results[dataset_name] = results
+        
+        # Print results for this dataset
+        logger.info(f"Results for {dataset_name}:")
+        for k, v in results.items():
+            logger.info(f"  {k}: {v}")
     
-    # Create evaluator
-    evaluator = DetailedCityscapesEvaluator(dataset_name=args.dataset)
-    
-    # Run evaluation
-    logger.info("Starting evaluation...")
-    results = inference_on_dataset(model.model, data_loader, evaluator)
-    
-    # Print results
-    logger.info("Evaluation Results:")
-    for k, v in results.items():
-        logger.info(f"{k}: {v}")
+    return all_results
 
 if __name__ == "__main__":
-    args = get_parser().parse_args()
-    main(args) 
+    main() 
