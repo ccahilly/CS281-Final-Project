@@ -1,580 +1,85 @@
-[05/30 13:49:08] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 13:49:08] d2.data.datasets.cityscapes INFO: 4 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 13:49:21] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 13:49:21] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 13:49:21] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 13:49:23] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 13:49:23] d2.data.build INFO: Distribution of instances among all 8 categories:
+[05/30 14:26:24] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
+[05/30 14:26:25] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
+[05/30 14:26:25] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
+[05/30 14:26:25] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
+[05/30 14:26:27] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
+[05/30 14:26:27] d2.data.build INFO: Distribution of instances among all 8 categories:
 [36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
 |:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
 |   person   | 14           |   rider    | 1            |    car     | 47           |
 |   truck    | 1            |    bus     | 1            |   train    | 0            |
 | motorcycle | 0            |  bicycle   | 2            |            |              |
 |   total    | 66           |            |              |            |              |[0m
-[05/30 13:49:23] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 13:49:23] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 13:49:23] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 13:49:23] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 13:49:23] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 13:49:23] d2.evaluation.cityscapes_evaluation INFO: Writing cityscapes results to temporary directory /var/folders/6z/jp8vd7g13sb2jwwvvmdt6mg80000gn/T/cityscapes_eval_962_6cx9 ...
-[05/30 13:49:36] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.826969 (2.826969 s / iter per device, on 1 devices)
-[05/30 13:49:36] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.443990 s / iter per device, on 1 devices)
-[05/30 13:49:36] detectron2 INFO: Evaluation Results:
-[05/30 13:52:05] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=False, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 13:52:06] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 13:52:06] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 13:52:06] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 13:52:06] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 13:52:07] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 13:52:07] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 13:52:07] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 13:52:07] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 13:52:07] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 13:52:07] detectron2 INFO: Starting evaluation...
-[05/30 13:52:07] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 13:52:20] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.855954 (2.855954 s / iter per device, on 1 devices)
-[05/30 13:52:20] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.449238 s / iter per device, on 1 devices)
-[05/30 13:52:20] detectron2 INFO: Evaluation Results:
-[05/30 13:53:49] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=False, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 13:53:50] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 13:53:50] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 13:53:50] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 13:53:50] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 13:53:51] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 13:53:51] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 13:53:51] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 13:53:51] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 13:53:51] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 13:53:51] detectron2 INFO: Starting evaluation...
-[05/30 13:53:51] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 13:56:08] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=False, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 13:56:08] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 13:56:08] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 13:56:08] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 13:56:10] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 13:56:10] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 13:56:10] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 13:56:10] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 13:56:10] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 13:56:10] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 13:56:10] detectron2 INFO: Starting evaluation...
-[05/30 13:56:10] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 13:56:23] d2.evaluation.evaluator INFO: Total inference time: 0:00:03.015503 (3.015503 s / iter per device, on 1 devices)
-[05/30 13:56:23] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.475402 s / iter per device, on 1 devices)
-[05/30 13:56:32] detectron2 INFO: Evaluation Results:
-[05/30 13:56:32] detectron2 INFO: segm: {'AP': 50.390510934078705, 'AP50': 77.4003441110176}
-[05/30 13:56:32] detectron2 INFO: detailed/person/predictions: 15
-[05/30 13:56:32] detectron2 INFO: detailed/rider/predictions: 3
-[05/30 13:56:32] detectron2 INFO: detailed/car/predictions: 37
-[05/30 13:56:32] detectron2 INFO: detailed/truck/predictions: 2
-[05/30 13:56:32] detectron2 INFO: detailed/bus/predictions: 1
-[05/30 13:56:32] detectron2 INFO: detailed/train/predictions: 0
-[05/30 13:56:32] detectron2 INFO: detailed/motorcycle/predictions: 0
-[05/30 13:56:32] detectron2 INFO: detailed/bicycle/predictions: 4
-[05/30 14:00:19] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=False, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:00:19] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:00:19] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:00:19] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:00:21] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:00:21] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:00:21] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:00:21] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:00:21] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:00:21] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:00:21] detectron2 INFO: Starting evaluation...
-[05/30 14:00:21] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:00:34] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.956224 (2.956224 s / iter per device, on 1 devices)
-[05/30 14:00:34] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.428590 s / iter per device, on 1 devices)
-[05/30 14:00:44] detectron2 INFO: Evaluation Results:
-[05/30 14:00:44] detectron2 INFO: segm: {'AP': 50.390510934078705, 'AP50': 77.4003441110176}
-[05/30 14:00:44] detectron2 INFO: detailed/person/total: 15
-[05/30 14:00:44] detectron2 INFO: detailed/person/correct: 15
-[05/30 14:00:44] detectron2 INFO: detailed/person/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/person/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/person/accuracy: 100.0
-[05/30 14:00:44] detectron2 INFO: detailed/rider/total: 3
-[05/30 14:00:44] detectron2 INFO: detailed/rider/correct: 3
-[05/30 14:00:44] detectron2 INFO: detailed/rider/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/rider/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/rider/accuracy: 100.0
-[05/30 14:00:44] detectron2 INFO: detailed/car/total: 37
-[05/30 14:00:44] detectron2 INFO: detailed/car/correct: 37
-[05/30 14:00:44] detectron2 INFO: detailed/car/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/car/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/car/accuracy: 100.0
-[05/30 14:00:44] detectron2 INFO: detailed/truck/total: 2
-[05/30 14:00:44] detectron2 INFO: detailed/truck/correct: 2
-[05/30 14:00:44] detectron2 INFO: detailed/truck/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/truck/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/truck/accuracy: 100.0
-[05/30 14:00:44] detectron2 INFO: detailed/bus/total: 1
-[05/30 14:00:44] detectron2 INFO: detailed/bus/correct: 1
-[05/30 14:00:44] detectron2 INFO: detailed/bus/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/bus/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/bus/accuracy: 100.0
-[05/30 14:00:44] detectron2 INFO: detailed/train/total: 0
-[05/30 14:00:44] detectron2 INFO: detailed/train/correct: 0
-[05/30 14:00:44] detectron2 INFO: detailed/train/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/train/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/motorcycle/total: 0
-[05/30 14:00:44] detectron2 INFO: detailed/motorcycle/correct: 0
-[05/30 14:00:44] detectron2 INFO: detailed/motorcycle/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/motorcycle/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/bicycle/total: 4
-[05/30 14:00:44] detectron2 INFO: detailed/bicycle/correct: 4
-[05/30 14:00:44] detectron2 INFO: detailed/bicycle/missed: 0
-[05/30 14:00:44] detectron2 INFO: detailed/bicycle/misclassified: 0
-[05/30 14:00:44] detectron2 INFO: detailed/bicycle/accuracy: 100.0
-[05/30 14:04:50] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:04:51] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:04:51] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:04:51] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:04:53] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:04:53] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:04:53] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:04:53] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:04:53] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:04:53] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:04:53] detectron2 INFO: Starting evaluation...
-[05/30 14:04:53] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:05:06] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.930943 (2.930943 s / iter per device, on 1 devices)
-[05/30 14:05:06] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.420325 s / iter per device, on 1 devices)
-[05/30 14:05:08] detectron2 INFO: Evaluation Results:
-[05/30 14:05:08] detectron2 INFO: segm: {'AP': 50.390510934078705, 'AP50': 77.4003441110176}
-[05/30 14:05:08] detectron2 INFO: detailed/person/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/person/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/person/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/person/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/person/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/rider/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/rider/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/rider/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/rider/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/rider/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/car/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/car/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/car/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/car/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/car/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/truck/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/truck/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/truck/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/truck/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/truck/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bus/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bus/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bus/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bus/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bus/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/train/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/train/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/train/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/train/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/train/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/motorcycle/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/motorcycle/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/motorcycle/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/motorcycle/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/motorcycle/false_positives: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bicycle/total_gt: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bicycle/correct: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bicycle/missed: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bicycle/misclassified: 0
-[05/30 14:05:08] detectron2 INFO: detailed/bicycle/false_positives: 0
-[05/30 14:06:25] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:06:25] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:06:25] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:06:25] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:06:27] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:06:27] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:06:27] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:06:27] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:06:27] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:06:27] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:06:27] detectron2 INFO: Starting evaluation...
-[05/30 14:06:27] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:06:41] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.983738 (2.983738 s / iter per device, on 1 devices)
-[05/30 14:06:41] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.480135 s / iter per device, on 1 devices)
-[05/30 14:06:42] detectron2 INFO: Evaluation Results:
-[05/30 14:06:42] detectron2 INFO: segm: {'AP': 50.390510934078705, 'AP50': 77.4003441110176}
-[05/30 14:06:42] detectron2 INFO: detailed/person/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/person/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/person/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/person/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/person/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/rider/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/rider/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/rider/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/rider/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/rider/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/car/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/car/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/car/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/car/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/car/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/truck/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/truck/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/truck/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/truck/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/truck/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bus/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bus/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bus/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bus/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bus/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/train/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/train/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/train/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/train/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/train/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/motorcycle/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/motorcycle/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/motorcycle/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/motorcycle/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/motorcycle/false_positives: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bicycle/total_gt: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bicycle/correct: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bicycle/missed: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bicycle/misclassified: 0
-[05/30 14:06:42] detectron2 INFO: detailed/bicycle/false_positives: 0
-[05/30 14:08:12] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:08:12] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:08:12] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:08:12] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:08:14] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:08:14] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:08:14] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:08:14] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:08:14] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:08:14] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:08:14] detectron2 INFO: Starting evaluation...
-[05/30 14:08:14] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:08:27] d2.evaluation.evaluator INFO: Total inference time: 0:00:03.474495 (3.474495 s / iter per device, on 1 devices)
-[05/30 14:08:27] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.999127 s / iter per device, on 1 devices)
-[05/30 14:08:27] detectron2 INFO: Evaluation Results:
-[05/30 14:10:27] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:10:27] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:10:28] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:10:28] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:10:29] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:10:29] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:10:29] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:10:29] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:10:29] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:10:29] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:10:29] detectron2 INFO: Starting evaluation...
-[05/30 14:10:29] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:10:43] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.880646 (2.880646 s / iter per device, on 1 devices)
-[05/30 14:10:43] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.493101 s / iter per device, on 1 devices)
-[05/30 14:10:43] detectron2 INFO: Evaluation Results:
-[05/30 14:13:33] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:13:33] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:13:33] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:13:33] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:13:35] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:13:35] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:13:35] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:13:35] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:13:35] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:13:35] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:13:35] detectron2 INFO: Starting evaluation...
-[05/30 14:13:35] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:13:49] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.853859 (2.853859 s / iter per device, on 1 devices)
-[05/30 14:13:49] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.482605 s / iter per device, on 1 devices)
-[05/30 14:13:49] detectron2 INFO: Evaluation Results:
-[05/30 14:14:50] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:14:51] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:14:51] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:14:51] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:14:52] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:14:52] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:14:52] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:14:52] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:14:52] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:14:52] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:14:52] detectron2 INFO: Starting evaluation...
-[05/30 14:14:52] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:15:06] d2.evaluation.evaluator INFO: Total inference time: 0:00:03.149983 (3.149983 s / iter per device, on 1 devices)
-[05/30 14:15:06] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.598217 s / iter per device, on 1 devices)
-[05/30 14:15:06] detectron2 INFO: Evaluation Results:
-[05/30 14:15:06] detectron2 INFO: detailed/person/total_gt: 14
-[05/30 14:15:06] detectron2 INFO: detailed/person/correct: 14
-[05/30 14:15:06] detectron2 INFO: detailed/person/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/person/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/person/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/person/recall: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/person/precision: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/rider/total_gt: 1
-[05/30 14:15:06] detectron2 INFO: detailed/rider/correct: 1
-[05/30 14:15:06] detectron2 INFO: detailed/rider/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/rider/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/rider/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/rider/recall: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/rider/precision: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/car/total_gt: 48
-[05/30 14:15:06] detectron2 INFO: detailed/car/correct: 32
-[05/30 14:15:06] detectron2 INFO: detailed/car/missed: 16
-[05/30 14:15:06] detectron2 INFO: detailed/car/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/car/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/car/recall: 66.66666666666666
-[05/30 14:15:06] detectron2 INFO: detailed/car/precision: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/truck/total_gt: 1
-[05/30 14:15:06] detectron2 INFO: detailed/truck/correct: 0
-[05/30 14:15:06] detectron2 INFO: detailed/truck/missed: 1
-[05/30 14:15:06] detectron2 INFO: detailed/truck/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/truck/false_positives: 1
-[05/30 14:15:06] detectron2 INFO: detailed/truck/recall: 0.0
-[05/30 14:15:06] detectron2 INFO: detailed/truck/precision: 0.0
-[05/30 14:15:06] detectron2 INFO: detailed/bus/total_gt: 1
-[05/30 14:15:06] detectron2 INFO: detailed/bus/correct: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bus/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bus/misclassified: 1
-[05/30 14:15:06] detectron2 INFO: detailed/bus/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bus/recall: 0.0
-[05/30 14:15:06] detectron2 INFO: detailed/train/total_gt: 0
-[05/30 14:15:06] detectron2 INFO: detailed/train/correct: 0
-[05/30 14:15:06] detectron2 INFO: detailed/train/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/train/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/train/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/motorcycle/total_gt: 0
-[05/30 14:15:06] detectron2 INFO: detailed/motorcycle/correct: 0
-[05/30 14:15:06] detectron2 INFO: detailed/motorcycle/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/motorcycle/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/motorcycle/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/total_gt: 2
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/correct: 2
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/missed: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/misclassified: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/false_positives: 0
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/recall: 100.0
-[05/30 14:15:06] detectron2 INFO: detailed/bicycle/precision: 100.0
-[05/30 14:18:26] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:18:27] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:18:27] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:18:27] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:18:28] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:18:28] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:18:28] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:18:28] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:18:28] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:18:28] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:18:28] detectron2 INFO: Starting evaluation...
-[05/30 14:18:28] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:18:42] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.931423 (2.931423 s / iter per device, on 1 devices)
-[05/30 14:18:42] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.406007 s / iter per device, on 1 devices)
-[05/30 14:18:42] detectron2 INFO: Evaluation Results:
-[05/30 14:18:42] detectron2 INFO: person/total_gt: 14
-[05/30 14:18:42] detectron2 INFO: person/total_pred: 15
-[05/30 14:18:42] detectron2 INFO: person/TP: 13
-[05/30 14:18:42] detectron2 INFO: person/FP: 2
-[05/30 14:18:42] detectron2 INFO: person/FN: 1
-[05/30 14:18:42] detectron2 INFO: person/precision: 86.66666666666667
-[05/30 14:18:42] detectron2 INFO: person/recall: 92.85714285714286
-[05/30 14:18:42] detectron2 INFO: person/f1: 89.65517241379311
-[05/30 14:18:42] detectron2 INFO: rider/total_gt: 1
-[05/30 14:18:42] detectron2 INFO: rider/total_pred: 3
-[05/30 14:18:42] detectron2 INFO: rider/TP: 1
-[05/30 14:18:42] detectron2 INFO: rider/FP: 2
-[05/30 14:18:42] detectron2 INFO: rider/FN: 0
-[05/30 14:18:42] detectron2 INFO: rider/precision: 33.33333333333333
-[05/30 14:18:42] detectron2 INFO: rider/recall: 100.0
-[05/30 14:18:42] detectron2 INFO: rider/f1: 50.0
-[05/30 14:18:42] detectron2 INFO: car/total_gt: 48
-[05/30 14:18:42] detectron2 INFO: car/total_pred: 37
-[05/30 14:18:42] detectron2 INFO: car/TP: 32
-[05/30 14:18:42] detectron2 INFO: car/FP: 5
-[05/30 14:18:42] detectron2 INFO: car/FN: 16
-[05/30 14:18:42] detectron2 INFO: car/precision: 86.48648648648648
-[05/30 14:18:42] detectron2 INFO: car/recall: 66.66666666666666
-[05/30 14:18:42] detectron2 INFO: car/f1: 75.29411764705883
-[05/30 14:18:42] detectron2 INFO: truck/total_gt: 1
-[05/30 14:18:42] detectron2 INFO: truck/total_pred: 2
-[05/30 14:18:42] detectron2 INFO: truck/TP: 0
-[05/30 14:18:42] detectron2 INFO: truck/FP: 2
-[05/30 14:18:42] detectron2 INFO: truck/FN: 1
-[05/30 14:18:42] detectron2 INFO: truck/precision: 0.0
-[05/30 14:18:42] detectron2 INFO: truck/recall: 0.0
-[05/30 14:18:42] detectron2 INFO: truck/f1: 0
-[05/30 14:18:42] detectron2 INFO: bus/total_gt: 1
-[05/30 14:18:42] detectron2 INFO: bus/total_pred: 1
-[05/30 14:18:42] detectron2 INFO: bus/TP: 1
-[05/30 14:18:42] detectron2 INFO: bus/FP: 0
-[05/30 14:18:42] detectron2 INFO: bus/FN: 0
-[05/30 14:18:42] detectron2 INFO: bus/precision: 100.0
-[05/30 14:18:42] detectron2 INFO: bus/recall: 100.0
-[05/30 14:18:42] detectron2 INFO: bus/f1: 100.0
-[05/30 14:18:42] detectron2 INFO: train/total_gt: 0
-[05/30 14:18:42] detectron2 INFO: train/total_pred: 0
-[05/30 14:18:42] detectron2 INFO: train/TP: 0
-[05/30 14:18:42] detectron2 INFO: train/FP: 0
-[05/30 14:18:42] detectron2 INFO: train/FN: 0
-[05/30 14:18:42] detectron2 INFO: train/precision: 0
-[05/30 14:18:42] detectron2 INFO: train/recall: 0
-[05/30 14:18:42] detectron2 INFO: train/f1: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/total_gt: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/total_pred: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/TP: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/FP: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/FN: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/precision: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/recall: 0
-[05/30 14:18:42] detectron2 INFO: motorcycle/f1: 0
-[05/30 14:18:42] detectron2 INFO: bicycle/total_gt: 2
-[05/30 14:18:42] detectron2 INFO: bicycle/total_pred: 4
-[05/30 14:18:42] detectron2 INFO: bicycle/TP: 2
-[05/30 14:18:42] detectron2 INFO: bicycle/FP: 2
-[05/30 14:18:42] detectron2 INFO: bicycle/FN: 0
-[05/30 14:18:42] detectron2 INFO: bicycle/precision: 50.0
-[05/30 14:18:42] detectron2 INFO: bicycle/recall: 100.0
-[05/30 14:18:42] detectron2 INFO: bicycle/f1: 66.66666666666666
-[05/30 14:21:00] detectron2 INFO: Command Line Args: Namespace(confidence_threshold=0.5, config_file='configs/Cityscapes/mask_rcnn_R_50_FPN.yaml', dataset='cityscapes_fine_instance_seg_val', eval_only=True, opts=[], output='evaluation_output', weights='detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl')
-[05/30 14:21:00] d2.checkpoint.detection_checkpoint INFO: [DetectionCheckpointer] Loading from detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl ...
-[05/30 14:21:00] d2.data.datasets.cityscapes INFO: 3 cities found in 'datasets/cityscapes/leftImg8bit/val/'.
-[05/30 14:21:00] d2.data.datasets.cityscapes INFO: Preprocessing cityscapes annotations ...
-[05/30 14:21:02] d2.data.datasets.cityscapes INFO: Loaded 4 images from datasets/cityscapes/leftImg8bit/val/
-[05/30 14:21:02] d2.data.build INFO: Distribution of instances among all 8 categories:
-[36m|  category  | #instances   |  category  | #instances   |  category  | #instances   |
-|:----------:|:-------------|:----------:|:-------------|:----------:|:-------------|
-|   person   | 14           |   rider    | 1            |    car     | 47           |
-|   truck    | 1            |    bus     | 1            |   train    | 0            |
-| motorcycle | 0            |  bicycle   | 2            |            |              |
-|   total    | 66           |            |              |            |              |[0m
-[05/30 14:21:02] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
-[05/30 14:21:02] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
-[05/30 14:21:02] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
-[05/30 14:21:02] d2.data.common INFO: Serialized dataset takes 0.08 MiB
-[05/30 14:21:02] detectron2 INFO: Starting evaluation...
-[05/30 14:21:02] d2.evaluation.evaluator INFO: Start inference on 4 batches
-[05/30 14:21:16] d2.evaluation.evaluator INFO: Total inference time: 0:00:03.113159 (3.113159 s / iter per device, on 1 devices)
-[05/30 14:21:16] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.559007 s / iter per device, on 1 devices)
-[05/30 14:21:16] detectron2 INFO: Evaluation Results:
-[05/30 14:21:16] detectron2 INFO: person/total_gt: 14
-[05/30 14:21:16] detectron2 INFO: person/total_pred: 15
-[05/30 14:21:16] detectron2 INFO: person/TP: 13
-[05/30 14:21:16] detectron2 INFO: person/FP: 2
-[05/30 14:21:16] detectron2 INFO: person/FN: 1
-[05/30 14:21:16] detectron2 INFO: person/precision: 86.66666666666667
-[05/30 14:21:16] detectron2 INFO: person/recall: 92.85714285714286
-[05/30 14:21:16] detectron2 INFO: person/f1: 89.65517241379311
-[05/30 14:21:16] detectron2 INFO: rider/total_gt: 1
-[05/30 14:21:16] detectron2 INFO: rider/total_pred: 3
-[05/30 14:21:16] detectron2 INFO: rider/TP: 1
-[05/30 14:21:16] detectron2 INFO: rider/FP: 2
-[05/30 14:21:16] detectron2 INFO: rider/FN: 0
-[05/30 14:21:16] detectron2 INFO: rider/precision: 33.33333333333333
-[05/30 14:21:16] detectron2 INFO: rider/recall: 100.0
-[05/30 14:21:16] detectron2 INFO: rider/f1: 50.0
-[05/30 14:21:16] detectron2 INFO: car/total_gt: 47
-[05/30 14:21:16] detectron2 INFO: car/total_pred: 37
-[05/30 14:21:16] detectron2 INFO: car/TP: 32
-[05/30 14:21:16] detectron2 INFO: car/FP: 5
-[05/30 14:21:16] detectron2 INFO: car/FN: 16
-[05/30 14:21:16] detectron2 INFO: car/precision: 86.48648648648648
-[05/30 14:21:16] detectron2 INFO: car/recall: 66.66666666666666
-[05/30 14:21:16] detectron2 INFO: car/f1: 75.29411764705883
-[05/30 14:21:16] detectron2 INFO: truck/total_gt: 1
-[05/30 14:21:16] detectron2 INFO: truck/total_pred: 2
-[05/30 14:21:16] detectron2 INFO: truck/TP: 0
-[05/30 14:21:16] detectron2 INFO: truck/FP: 2
-[05/30 14:21:16] detectron2 INFO: truck/FN: 1
-[05/30 14:21:16] detectron2 INFO: truck/precision: 0.0
-[05/30 14:21:16] detectron2 INFO: truck/recall: 0.0
-[05/30 14:21:16] detectron2 INFO: truck/f1: 0
-[05/30 14:21:16] detectron2 INFO: bus/total_gt: 1
-[05/30 14:21:16] detectron2 INFO: bus/total_pred: 1
-[05/30 14:21:16] detectron2 INFO: bus/TP: 1
-[05/30 14:21:16] detectron2 INFO: bus/FP: 0
-[05/30 14:21:16] detectron2 INFO: bus/FN: 0
-[05/30 14:21:16] detectron2 INFO: bus/precision: 100.0
-[05/30 14:21:16] detectron2 INFO: bus/recall: 100.0
-[05/30 14:21:16] detectron2 INFO: bus/f1: 100.0
-[05/30 14:21:16] detectron2 INFO: train/total_gt: 0
-[05/30 14:21:16] detectron2 INFO: train/total_pred: 0
-[05/30 14:21:16] detectron2 INFO: train/TP: 0
-[05/30 14:21:16] detectron2 INFO: train/FP: 0
-[05/30 14:21:16] detectron2 INFO: train/FN: 0
-[05/30 14:21:16] detectron2 INFO: train/precision: 0
-[05/30 14:21:16] detectron2 INFO: train/recall: 0
-[05/30 14:21:16] detectron2 INFO: train/f1: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/total_gt: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/total_pred: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/TP: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/FP: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/FN: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/precision: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/recall: 0
-[05/30 14:21:16] detectron2 INFO: motorcycle/f1: 0
-[05/30 14:21:16] detectron2 INFO: bicycle/total_gt: 2
-[05/30 14:21:16] detectron2 INFO: bicycle/total_pred: 4
-[05/30 14:21:16] detectron2 INFO: bicycle/TP: 2
-[05/30 14:21:16] detectron2 INFO: bicycle/FP: 2
-[05/30 14:21:16] detectron2 INFO: bicycle/FN: 0
-[05/30 14:21:16] detectron2 INFO: bicycle/precision: 50.0
-[05/30 14:21:16] detectron2 INFO: bicycle/recall: 100.0
-[05/30 14:21:16] detectron2 INFO: bicycle/f1: 66.66666666666666
+[05/30 14:26:27] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in inference: [ResizeShortestEdge(short_edge_length=(1024, 1024), max_size=2048, sample_style='choice')]
+[05/30 14:26:27] d2.data.common INFO: Serializing the dataset using: <class 'detectron2.data.common._TorchSerializedList'>
+[05/30 14:26:27] d2.data.common INFO: Serializing 4 elements to byte tensors and concatenating them all ...
+[05/30 14:26:27] d2.data.common INFO: Serialized dataset takes 0.08 MiB
+[05/30 14:26:27] detectron2 INFO: Starting evaluation...
+[05/30 14:26:27] d2.evaluation.evaluator INFO: Start inference on 4 batches
+[05/30 14:26:41] d2.evaluation.evaluator INFO: Total inference time: 0:00:02.958583 (2.958583 s / iter per device, on 1 devices)
+[05/30 14:26:41] d2.evaluation.evaluator INFO: Total inference pure compute time: 0:00:02 (2.460985 s / iter per device, on 1 devices)
+[05/30 14:26:41] detectron2 INFO: Evaluation Results:
+[05/30 14:26:41] detectron2 INFO: person/total_gt: 14
+[05/30 14:26:41] detectron2 INFO: person/total_pred: 15
+[05/30 14:26:41] detectron2 INFO: person/TP: 13
+[05/30 14:26:41] detectron2 INFO: person/FP: 2
+[05/30 14:26:41] detectron2 INFO: person/FN: 1
+[05/30 14:26:41] detectron2 INFO: person/precision: 86.66666666666667
+[05/30 14:26:41] detectron2 INFO: person/recall: 92.85714285714286
+[05/30 14:26:41] detectron2 INFO: person/f1: 89.65517241379311
+[05/30 14:26:41] detectron2 INFO: rider/total_gt: 1
+[05/30 14:26:41] detectron2 INFO: rider/total_pred: 3
+[05/30 14:26:41] detectron2 INFO: rider/TP: 1
+[05/30 14:26:41] detectron2 INFO: rider/FP: 2
+[05/30 14:26:41] detectron2 INFO: rider/FN: 0
+[05/30 14:26:41] detectron2 INFO: rider/precision: 33.33333333333333
+[05/30 14:26:41] detectron2 INFO: rider/recall: 100.0
+[05/30 14:26:41] detectron2 INFO: rider/f1: 50.0
+[05/30 14:26:41] detectron2 INFO: car/total_gt: 47
+[05/30 14:26:41] detectron2 INFO: car/total_pred: 37
+[05/30 14:26:41] detectron2 INFO: car/TP: 32
+[05/30 14:26:41] detectron2 INFO: car/FP: 5
+[05/30 14:26:41] detectron2 INFO: car/FN: 15
+[05/30 14:26:41] detectron2 INFO: car/precision: 86.48648648648648
+[05/30 14:26:41] detectron2 INFO: car/recall: 68.08510638297872
+[05/30 14:26:41] detectron2 INFO: car/f1: 76.19047619047619
+[05/30 14:26:41] detectron2 INFO: truck/total_gt: 1
+[05/30 14:26:41] detectron2 INFO: truck/total_pred: 2
+[05/30 14:26:41] detectron2 INFO: truck/TP: 0
+[05/30 14:26:41] detectron2 INFO: truck/FP: 2
+[05/30 14:26:41] detectron2 INFO: truck/FN: 1
+[05/30 14:26:41] detectron2 INFO: truck/precision: 0.0
+[05/30 14:26:41] detectron2 INFO: truck/recall: 0.0
+[05/30 14:26:41] detectron2 INFO: truck/f1: 0
+[05/30 14:26:41] detectron2 INFO: bus/total_gt: 1
+[05/30 14:26:41] detectron2 INFO: bus/total_pred: 1
+[05/30 14:26:41] detectron2 INFO: bus/TP: 1
+[05/30 14:26:41] detectron2 INFO: bus/FP: 0
+[05/30 14:26:41] detectron2 INFO: bus/FN: 0
+[05/30 14:26:41] detectron2 INFO: bus/precision: 100.0
+[05/30 14:26:41] detectron2 INFO: bus/recall: 100.0
+[05/30 14:26:41] detectron2 INFO: bus/f1: 100.0
+[05/30 14:26:41] detectron2 INFO: train/total_gt: 0
+[05/30 14:26:41] detectron2 INFO: train/total_pred: 0
+[05/30 14:26:41] detectron2 INFO: train/TP: 0
+[05/30 14:26:41] detectron2 INFO: train/FP: 0
+[05/30 14:26:41] detectron2 INFO: train/FN: 0
+[05/30 14:26:41] detectron2 INFO: train/precision: 0
+[05/30 14:26:41] detectron2 INFO: train/recall: 0
+[05/30 14:26:41] detectron2 INFO: train/f1: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/total_gt: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/total_pred: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/TP: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/FP: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/FN: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/precision: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/recall: 0
+[05/30 14:26:41] detectron2 INFO: motorcycle/f1: 0
+[05/30 14:26:41] detectron2 INFO: bicycle/total_gt: 2
+[05/30 14:26:41] detectron2 INFO: bicycle/total_pred: 4
+[05/30 14:26:41] detectron2 INFO: bicycle/TP: 2
+[05/30 14:26:41] detectron2 INFO: bicycle/FP: 2
+[05/30 14:26:41] detectron2 INFO: bicycle/FN: 0
+[05/30 14:26:41] detectron2 INFO: bicycle/precision: 50.0
+[05/30 14:26:41] detectron2 INFO: bicycle/recall: 100.0
+[05/30 14:26:41] detectron2 INFO: bicycle/f1: 66.66666666666666

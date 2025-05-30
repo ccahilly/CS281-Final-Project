@@ -257,19 +257,12 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                     else:
                         # False Positive for predicted class (wrong class)
                         self.metrics[pred_class_name]['FP'] += 1
-                        # False Negative for ground truth class (missed correct class)
+                        # False Negative for ground truth class (misclassified)
                         self.metrics[gt_class_name]['FN'] += 1
                         self._logger.info(
                             f"  Misclassification: GT {gt_class_name} detected as {pred_class_name} "
                             f"with IoU={best_iou:.2f}, score={pred_score:.2f}"
                         )
-            
-            # Unmatched ground truth instances are False Negatives
-            for gt_idx, gt_class in enumerate(gt_classes):
-                if not gt_matched[gt_idx]:
-                    gt_class_name = self.classes[gt_class]
-                    self.metrics[gt_class_name]['FN'] += 1
-                    self._logger.info(f"  FN: Missed {gt_class_name} instance")
             
             # Unmatched predictions are False Positives
             for pred_idx, pred_class in enumerate(pred_classes):
@@ -277,6 +270,14 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                     pred_class_name = self.classes[pred_class]
                     self.metrics[pred_class_name]['FP'] += 1
                     self._logger.info(f"  FP: Extra {pred_class_name} prediction with score={pred_scores[pred_idx]:.2f}")
+        
+        # Count unmatched GT instances as False Negatives
+        # We do this at the end to ensure we don't double count FNs
+        for class_name, metrics in self.metrics.items():
+            total_gt = metrics['total_gt']
+            tp = metrics['TP']
+            # FN is any ground truth instance that wasn't a true positive
+            metrics['FN'] = total_gt - tp
         
         # Print detailed metrics for each class
         self._logger.info("\nDetailed Metrics per Class:")
@@ -293,7 +294,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             total_pred = metrics['total_pred']
             
             precision = tp / (tp + fp) if tp + fp > 0 else 0
-            recall = tp / (tp + fn) if tp + fn > 0 else 0
+            recall = tp / total_gt if total_gt > 0 else 0
             f1 = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
             
             self._logger.info(
@@ -323,7 +324,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 total_pred = metrics['total_pred']
                 
                 precision = tp / (tp + fp) if tp + fp > 0 else 0
-                recall = tp / (tp + fn) if tp + fn > 0 else 0
+                recall = tp / total_gt if total_gt > 0 else 0
                 f1 = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
                 
                 f.write(f"{class_name},{total_gt},{total_pred},{tp},{fp},{fn},{precision:.4f},{recall:.4f},{f1:.4f}\n")

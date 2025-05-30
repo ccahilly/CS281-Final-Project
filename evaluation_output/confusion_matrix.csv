@@ -1,9 +1,0 @@
-true_class,person,rider,car,truck,bus,train,motorcycle,bicycle,missed
-person,14,0,0,0,0,0,0,0,0
-rider,0,1,0,0,0,0,0,0,0
-car,0,0,32,0,0,0,0,0,16
-truck,0,0,0,0,0,0,0,0,1
-bus,0,0,0,1,0,0,0,0,0
-train,0,0,0,0,0,0,0,0,0
-motorcycle,0,0,0,0,0,0,0,0,0
-bicycle,0,0,0,0,0,0,0,2,0
