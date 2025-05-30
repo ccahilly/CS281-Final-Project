@@ -28,19 +28,6 @@ python -m pip install -e .
 
 Lastly, [download](https://www.cityscapes-dataset.com/downloads/) the Cityscapes dataset (specifically, `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`). Place `leftImg8bit` and `gtFine` in `datasets/cityscapes`.
 
-## Getting Started
-
-See [Getting Started with Detectron2](https://detectron2.readthedocs.io/tutorials/getting_started.html),
-and the [Colab Notebook](https://colab.research.google.com/drive/16jcaJoc6bCFAQ96jDe2HwtXj7BMD_-m5)
-to learn about basic usage.
-
-Learn more at our [documentation](https://detectron2.readthedocs.org).
-And see [projects/](projects/) for some projects that are built on top of detectron2.
-
-## Model Zoo and Baselines
-
-We provide a large set of baseline results and trained models available for download in the [Detectron2 Model Zoo](MODEL_ZOO.md).
-
 ## License
 
 Detectron2 is released under the [Apache 2.0 license](LICENSE).
