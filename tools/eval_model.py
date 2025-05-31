@@ -25,8 +25,8 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         super().__init__(dataset_name)
         
         # Get Cityscapes metadata
-        metadata = MetadataCatalog.get(dataset_name)
-        self.classes = metadata.thing_classes
+        self.metadata = MetadataCatalog.get(dataset_name)
+        self.classes = self.metadata.thing_classes
         self.num_classes = len(self.classes)
         
         # Map Cityscapes training IDs to our class indices
@@ -123,7 +123,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 continue
             
             # Visualize ground truth
-            v_gt = Visualizer(original_img)
+            v_gt = Visualizer(original_img, metadata=self.metadata)
             v_gt = v_gt.overlay_instances(
                 boxes=np.array(gt_boxes),
                 labels=[self.classes[i] for i in gt_classes],
@@ -132,7 +132,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             gt_vis = v_gt.get_image()
             
             # Visualize predictions
-            v_pred = Visualizer(original_img)
+            v_pred = Visualizer(original_img, metadata=self.metadata)
             v_pred = v_pred.draw_instance_predictions(pred_instances)
             pred_vis = v_pred.get_image()
             
