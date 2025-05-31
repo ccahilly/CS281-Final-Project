@@ -3,53 +3,41 @@
 import logging
 import os
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import cv2
 
 from detectron2.config import get_cfg
-from detectron2.data import build_detection_test_loader
+from detectron2.data import build_detection_test_loader, MetadataCatalog
 from detectron2.engine import DefaultTrainer
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.evaluation import CityscapesInstanceEvaluator, inference_on_dataset
 from detectron2.utils.logger import setup_logger
+from detectron2.utils.visualizer import Visualizer, ColorMode
 import detectron2.utils.comm as comm
 
 # Constants for evaluation configuration
 CONFIG_FILE = "configs/Cityscapes/mask_rcnn_R_50_FPN.yaml"
 WEIGHTS = "detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl"
 CONFIDENCE_THRESHOLD = 0.5
-NUM_CLASSES = 8  # person, rider, car, truck, bus, train, motorcycle, bicycle
-
-# Ground truth instance counts for validation set
-GT_COUNTS = {
-    'person': 14,
-    'rider': 1,
-    'car': 47,
-    'truck': 1,
-    'bus': 1,
-    'train': 0,
-    'motorcycle': 0,
-    'bicycle': 2
-}
 
 class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
     def __init__(self, dataset_name: str):
         super().__init__(dataset_name)
         
-        self.classes = ["person", "rider", "car", "truck", "bus", "train", "motorcycle", "bicycle"]
+        # Get Cityscapes metadata
+        metadata = MetadataCatalog.get(dataset_name)
+        self.classes = metadata.thing_classes
         self.num_classes = len(self.classes)
         
         # Map Cityscapes training IDs to our class indices
-        self.trainId_to_class = {
-            24: 0,  # person
-            25: 1,  # rider
-            26: 2,  # car
-            27: 3,  # truck
-            28: 4,  # bus
-            31: 5,  # train
-            32: 6,  # motorcycle
-            33: 7,  # bicycle
-        }
+        from cityscapesscripts.helpers.labels import labels
+        self.trainId_to_class = {}
+        thing_count = 0
+        for label in labels:
+            if label.hasInstances and not label.ignoreInEval:
+                # Map from instance ID to contiguous thing class id
+                self.trainId_to_class[label.id] = thing_count
+                thing_count += 1
         
         # Initialize metrics for each class
         self.metrics = {cls: {
@@ -64,9 +52,15 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         self._logger = logging.getLogger(__name__)
         self._predictions = []
         
-        # Create output directory for CSV
+        # Create output directories for visualizations
         self._output_dir = os.path.join(os.path.dirname(dataset_name), "evaluation_output")
+        self._vis_dir = os.path.join(self._output_dir, "visualizations")
+        self._gt_vis_dir = os.path.join(self._vis_dir, "ground_truth")
+        self._pred_vis_dir = os.path.join(self._vis_dir, "predictions")
+        
         os.makedirs(self._output_dir, exist_ok=True)
+        os.makedirs(self._gt_vis_dir, exist_ok=True)
+        os.makedirs(self._pred_vis_dir, exist_ok=True)
 
     def process(self, inputs, outputs):
         """Process predictions from model."""
@@ -87,11 +81,15 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 self._logger.warning(f"Instance segmentation file not found: {gt_path}")
                 continue
                 
-            # Load instance segmentation
+            # Load instance segmentation and original image
             gt_seg = cv2.imread(gt_path, cv2.IMREAD_UNCHANGED)
-            if gt_seg is None:
-                self._logger.warning(f"Could not read instance segmentation file: {gt_path}")
+            original_img = cv2.imread(img_path)
+            if gt_seg is None or original_img is None:
+                self._logger.warning(f"Could not read image files: {gt_path} or {img_path}")
                 continue
+                
+            # Convert BGR to RGB for visualization
+            original_img = original_img[:, :, ::-1]
                 
             # Extract instances
             gt_instances = []
@@ -124,6 +122,31 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 self._logger.warning(f"No valid ground truth instances found in {gt_path}")
                 continue
             
+            # Visualize ground truth
+            v_gt = Visualizer(original_img)
+            v_gt = v_gt.overlay_instances(
+                boxes=np.array(gt_boxes),
+                labels=[self.classes[i] for i in gt_classes],
+                masks=gt_instances
+            )
+            gt_vis = v_gt.get_image()
+            
+            # Visualize predictions
+            v_pred = Visualizer(original_img)
+            v_pred = v_pred.draw_instance_predictions(pred_instances)
+            pred_vis = v_pred.get_image()
+            
+            # Save visualizations
+            img_name = os.path.basename(img_path)
+            cv2.imwrite(
+                os.path.join(self._gt_vis_dir, f"gt_{img_name}"), 
+                gt_vis[:, :, ::-1]  # Convert back to BGR for cv2
+            )
+            cv2.imwrite(
+                os.path.join(self._pred_vis_dir, f"pred_{img_name}"), 
+                pred_vis[:, :, ::-1]  # Convert back to BGR for cv2
+            )
+            
             # Store for evaluation
             self._predictions.append({
                 "file_name": input["file_name"],
@@ -142,9 +165,11 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         for metrics in self.metrics.values():
             metrics.update({'TP': 0, 'FP': 0, 'FN': 0, 'total_gt': 0, 'total_pred': 0})
         
-        # Set ground truth totals from dataset statistics
-        for class_name, count in GT_COUNTS.items():
-            self.metrics[class_name]['total_gt'] = count
+        # Calculate ground truth totals from the dataset
+        for pred in self._predictions:
+            gt_classes = pred["gt_classes"]
+            for class_idx in gt_classes:
+                self.metrics[self.classes[class_idx]]['total_gt'] += 1
         
         # Process each prediction
         for pred in self._predictions:
@@ -255,7 +280,7 @@ def setup_cfg():
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = CONFIDENCE_THRESHOLD
     cfg.MODEL.WEIGHTS = WEIGHTS
     cfg.MODEL.DEVICE = "cpu"
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = NUM_CLASSES
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes)
     cfg.freeze()
     return cfg
 
