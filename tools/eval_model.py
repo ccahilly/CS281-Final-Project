@@ -7,10 +7,10 @@ from collections import OrderedDict
 import cv2
 
 from detectron2.config import get_cfg
-from detectron2.data import build_detection_test_loader, MetadataCatalog
+from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultTrainer
 from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.evaluation import CityscapesInstanceEvaluator, inference_on_dataset
+from detectron2.evaluation import CityscapesInstanceEvaluator, verify_results
 from detectron2.utils.logger import setup_logger
 from detectron2.utils.visualizer import Visualizer
 import detectron2.utils.comm as comm
@@ -57,22 +57,28 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         os.makedirs(self._output_dir, exist_ok=True)
         os.makedirs(self._images_dir, exist_ok=True)
 
-    def _visualize_instance(self, image, box, mask, label, output_path, color):
+    def _visualize_instance(self, image, box, mask, label, output_path, color=None):
         """Helper function to visualize a single instance."""
         v = Visualizer(image.copy(), metadata=self.metadata)
-        v.draw_box(box, edge_color=color)
-        if mask is not None:
-            v.draw_binary_mask(mask, color=color, alpha=0.3)
-        v.draw_text(label, (box[0], box[1]), color=color)
+        if color is not None:
+            v.draw_box(box, edge_color=color)
+            if mask is not None:
+                v.draw_binary_mask(mask, color=color, alpha=0.3)
+            v.draw_text(label, (box[0], box[1]), color=color)
+        else:
+            v = v.overlay_instances(
+                boxes=np.array([box]) if box is not None else None,
+                masks=[mask] if mask is not None else None,
+                labels=[label] if label is not None else None
+            )
         instance_vis = v.get_output().get_image()
         cv2.imwrite(output_path, instance_vis[:, :, ::-1])
 
     def process(self, inputs, outputs):
-        """Process predictions from model."""
         for input, output in zip(inputs, outputs):
             pred_instances = output["instances"].to(self._cpu_device)
             
-            # Get ground truth instances
+            # Get ground truth path
             img_path = input["file_name"]
             gt_path = img_path.replace("/leftImg8bit/", "/gtFine/").replace("_leftImg8bit.png", "_gtFine_instanceIds.png")
             
@@ -125,8 +131,8 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             pred_classes = pred_instances.pred_classes.numpy()
             pred_masks = pred_instances.pred_masks.numpy() if pred_instances.has("pred_masks") else None
             
-            # Compute matches
-            image_eval = {
+            # Evaluate instances
+            eval_info = {
                 'gt_classes': gt_classes,
                 'gt_matched': np.zeros(len(gt_classes), dtype=bool),
                 'pred_classes': pred_classes,
@@ -135,53 +141,49 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 'ious': self._compute_iou_matrix(np.array(gt_boxes), pred_boxes)
             }
             
-            # Match ground truth to predictions
+            # Match instances
             for gt_idx, gt_class in enumerate(gt_classes):
                 best_iou = 0
                 best_pred_idx = -1
                 
                 for pred_idx, pred_class in enumerate(pred_classes):
-                    if pred_class == gt_class and not image_eval['pred_matched'][pred_idx]:
-                        iou = image_eval['ious'][gt_idx, pred_idx]
+                    if pred_class == gt_class and not eval_info['pred_matched'][pred_idx]:
+                        iou = eval_info['ious'][gt_idx, pred_idx]
                         if iou > self.iou_threshold and iou > best_iou:
                             best_iou = iou
                             best_pred_idx = pred_idx
                 
                 if best_pred_idx >= 0:
-                    image_eval['gt_matched'][gt_idx] = True
-                    image_eval['pred_matched'][best_pred_idx] = True
-                    image_eval['is_tp'][best_pred_idx] = True
+                    eval_info['gt_matched'][gt_idx] = True
+                    eval_info['pred_matched'][best_pred_idx] = True
+                    eval_info['is_tp'][best_pred_idx] = True
             
             # Visualize ground truth instances
             for gt_idx, (mask, box, class_idx) in enumerate(zip(gt_instances, gt_boxes, gt_classes)):
-                color = TP_COLOR if image_eval['gt_matched'][gt_idx] else FN_COLOR
+                color = TP_COLOR if eval_info['gt_matched'][gt_idx] else FN_COLOR
                 self._visualize_instance(
                     original_img, box, mask,
                     self.classes[class_idx],
                     os.path.join(gt_instances_dir, f"{self.classes[class_idx]}_{gt_idx + 1}.png"),
-                    color
+                    color=color
                 )
             
             # Visualize predicted instances
             for pred_idx, (box, class_idx) in enumerate(zip(pred_boxes, pred_classes)):
-                color = TP_COLOR if image_eval['is_tp'][pred_idx] else FP_COLOR
+                color = TP_COLOR if eval_info['is_tp'][pred_idx] else FP_COLOR
                 mask = pred_masks[pred_idx] if pred_masks is not None else None
-                best_iou = max(image_eval['ious'][:, pred_idx])
+                best_iou = max(eval_info['ious'][:, pred_idx])
                 
                 self._visualize_instance(
                     original_img, box, mask,
                     f"{self.classes[class_idx]} ({best_iou:.2f})",
                     os.path.join(pred_instances_dir, f"{self.classes[class_idx]}_{pred_idx + 1}.png"),
-                    color
+                    color=color
                 )
             
-            self._predictions.append({
-                "file_name": input["file_name"],
-                "evaluation": image_eval
-            })
+            self._predictions.append({"evaluation": eval_info})
 
     def evaluate(self):
-        """Evaluate predictions and compute metrics."""
         if not self._predictions:
             self._logger.warning("No predictions to evaluate!")
             return None
@@ -190,7 +192,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         for metrics in self.metrics.values():
             metrics.update({'TP': 0, 'FP': 0, 'FN': 0, 'total_gt': 0, 'total_pred': 0})
         
-        # Process all predictions
+        # Accumulate metrics across all images
         for pred in self._predictions:
             eval_info = pred["evaluation"]
             
@@ -200,7 +202,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             for pred_class in eval_info['pred_classes']:
                 self.metrics[self.classes[pred_class]]['total_pred'] += 1
             
-            # Count TPs, FPs, and FNs
+            # Count matches
             for gt_idx, (gt_class, is_matched) in enumerate(zip(eval_info['gt_classes'], eval_info['gt_matched'])):
                 gt_class_name = self.classes[gt_class]
                 if is_matched:
@@ -215,12 +217,12 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         # Compute final metrics
         results = OrderedDict()
         metrics_file = os.path.join(self._output_dir, "detailed_metrics.csv")
+        
         with open(metrics_file, "w") as f:
             f.write("class,total_gt,total_pred,TP,FP,FN,precision,recall,f1\n")
             
             for class_name, metrics in self.metrics.items():
-                tp = metrics['TP']
-                fp = metrics['FP']
+                tp, fp = metrics['TP'], metrics['FP']
                 fn = metrics['FN']
                 total_gt = metrics['total_gt']
                 total_pred = metrics['total_pred']
@@ -231,7 +233,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 
                 f.write(f"{class_name},{total_gt},{total_pred},{tp},{fp},{fn},{precision:.4f},{recall:.4f},{f1:.4f}\n")
                 
-                # Store results
+                # Store metrics
                 results[f"{class_name}/total_gt"] = total_gt
                 results[f"{class_name}/total_pred"] = total_pred
                 results[f"{class_name}/TP"] = tp
@@ -263,7 +265,6 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         return iou
 
 def setup_cfg():
-    """Create configs and perform basic setups."""
     cfg = get_cfg()
     cfg.merge_from_file(CONFIG_FILE)
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = CONFIDENCE_THRESHOLD
