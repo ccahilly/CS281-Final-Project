@@ -18,7 +18,7 @@ import detectron2.utils.comm as comm
 # Constants for evaluation configuration
 CONFIG_FILE = "configs/Cityscapes/mask_rcnn_R_50_FPN.yaml"
 WEIGHTS = "detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl"
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.5  # Standard confidence threshold for Cityscapes
 
 # Colors for visualization (in range [0, 1])
 TP_COLOR = (0.0, 1.0, 0.0)  # Green
@@ -44,7 +44,9 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         # Initialize metrics
         self.metrics = {cls: {
             'TP': 0, 'FP': 0, 'FN': 0,
-            'total_gt': 0, 'total_pred': 0
+            'total_gt': 0, 'total_pred': 0,
+            'scores': [],  # Store prediction scores for AP calculation
+            'matched': []  # Store whether each prediction matched a GT (True/False)
         } for cls in self.classes}
         
         self.iou_threshold = 0.5
@@ -129,6 +131,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             # Get predictions
             pred_boxes = pred_instances.pred_boxes.tensor.numpy()
             pred_classes = pred_instances.pred_classes.numpy()
+            pred_scores = pred_instances.scores.numpy()
             pred_masks = pred_instances.pred_masks.numpy() if pred_instances.has("pred_masks") else None
             
             # Evaluate instances
@@ -138,6 +141,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 'pred_classes': pred_classes,
                 'pred_matched': np.zeros(len(pred_classes), dtype=bool),
                 'is_tp': np.zeros(len(pred_classes), dtype=bool),
+                'pred_scores': pred_scores,
                 'ious': self._compute_iou_matrix(np.array(gt_boxes), pred_boxes)
             }
             
@@ -158,6 +162,12 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                     eval_info['pred_matched'][best_pred_idx] = True
                     eval_info['is_tp'][best_pred_idx] = True
             
+            # Store prediction scores and match status for AP calculation
+            for pred_idx, (pred_class, is_tp, score) in enumerate(zip(pred_classes, eval_info['is_tp'], pred_scores)):
+                class_name = self.classes[pred_class]
+                self.metrics[class_name]['scores'].append(score)
+                self.metrics[class_name]['matched'].append(is_tp)
+
             # Visualize ground truth instances
             for gt_idx, (mask, box, class_idx) in enumerate(zip(gt_instances, gt_boxes, gt_classes)):
                 color = TP_COLOR if eval_info['gt_matched'][gt_idx] else FN_COLOR
@@ -182,6 +192,47 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 )
             
             self._predictions.append({"evaluation": eval_info})
+
+    def _compute_iou_matrix(self, boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:
+        """
+        Compute IoU between all pairs of boxes between boxes1 and boxes2.
+        """
+        area1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
+        area2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
+        
+        lt = np.maximum(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+        rb = np.minimum(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
+        
+        wh = np.clip(rb - lt, 0, None)  # [N,M,2]
+        inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
+        
+        union = area1[:, None] + area2 - inter
+        
+        iou = inter / union
+        return iou
+
+    def _compute_ap(self, scores, matched):
+        """Compute Average Precision at the confidence threshold."""
+        if not scores:
+            return 0.0
+            
+        # Sort by score in descending order
+        scores = np.array(scores)
+        matched = np.array(matched)
+        
+        # Only consider predictions above confidence threshold
+        mask = scores >= CONFIDENCE_THRESHOLD
+        matched = matched[mask]
+        
+        if len(matched) == 0:
+            return 0.0
+        
+        # Compute precision
+        true_positives = np.sum(matched)
+        total_predictions = len(matched)
+        
+        precision = true_positives / total_predictions if total_predictions > 0 else 0.0
+        return float(precision)
 
     def evaluate(self):
         if not self._predictions:
@@ -218,8 +269,12 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         results = OrderedDict()
         metrics_file = os.path.join(self._output_dir, "detailed_metrics.csv")
         
+        # Calculate mean AP
+        mean_ap = 0.0
+        valid_classes = 0
+        
         with open(metrics_file, "w") as f:
-            f.write("class,total_gt,total_pred,TP,FP,FN,precision,recall,f1\n")
+            f.write("class,total_gt,total_pred,TP,FP,FN,precision,recall,f1,AP\n")
             
             for class_name, metrics in self.metrics.items():
                 tp, fp = metrics['TP'], metrics['FP']
@@ -231,7 +286,14 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 recall = tp / total_gt if total_gt > 0 else 0
                 f1 = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
                 
-                f.write(f"{class_name},{total_gt},{total_pred},{tp},{fp},{fn},{precision:.4f},{recall:.4f},{f1:.4f}\n")
+                # Compute AP at confidence threshold
+                ap = self._compute_ap(metrics['scores'], metrics['matched'])
+                
+                if total_gt > 0:
+                    mean_ap += ap
+                    valid_classes += 1
+                
+                f.write(f"{class_name},{total_gt},{total_pred},{tp},{fp},{fn},{precision:.4f},{recall:.4f},{f1:.4f},{ap:.4f}\n")
                 
                 # Store metrics
                 results[f"{class_name}/total_gt"] = total_gt
@@ -242,27 +304,14 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 results[f"{class_name}/precision"] = precision * 100
                 results[f"{class_name}/recall"] = recall * 100
                 results[f"{class_name}/f1"] = f1 * 100
+                results[f"{class_name}/AP"] = ap * 100
+        
+        # Add mean AP
+        if valid_classes > 0:
+            results["mean/AP"] = (mean_ap / valid_classes) * 100
         
         self._logger.info(f"Detailed metrics saved to: {metrics_file}")
         return results
-
-    def _compute_iou_matrix(self, boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:
-        """
-        Compute IoU between all pairs of boxes between boxes1 and boxes2.
-        """
-        area1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
-        area2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
-        
-        lt = np.maximum(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
-        rb = np.minimum(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
-        
-        wh = np.clip(rb - lt, 0, None)  # [N,M,2]
-        inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
-        
-        union = area1[:, None] + area2 - inter
-        
-        iou = inter / union
-        return iou
 
 def setup_cfg():
     cfg = get_cfg()
