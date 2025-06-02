@@ -19,8 +19,24 @@ CONFIG_FILE = "configs/Cityscapes/mask_rcnn_R_50_FPN.yaml"
 WEIGHTS = "detectron2://Cityscapes/mask_rcnn_R_50_FPN/142423278/model_final_af9cf5.pkl"
 CONFIDENCE_THRESHOLD = 0.5
 
+def setup_cfg():
+    """Set up detectron2 config."""
+    cfg = get_cfg()
+    cfg.merge_from_file(CONFIG_FILE)
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = CONFIDENCE_THRESHOLD
+    cfg.MODEL.WEIGHTS = WEIGHTS
+    cfg.MODEL.DEVICE = "cpu"  # Use CPU for easier debugging
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes)
+    # Make sure RPN proposals are saved
+    cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 1000  # Number of proposals to keep
+    cfg.MODEL.RPN.RETURN_PROPOSALS = True  # Make sure proposals are returned
+    return cfg
+
 class ProposalExtractor:
     def __init__(self, cfg):
+        # Modify config to return proposals
+        cfg = cfg.clone()
+        cfg.MODEL.RPN.RETURN_PROPOSALS = True
         self.cfg = cfg
         self.predictor = DefaultPredictor(cfg)
         self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
@@ -47,15 +63,19 @@ class ProposalExtractor:
             
         # Get model predictions with RPN proposals
         with torch.no_grad():
-            # Get raw outputs from the model
-            outputs = self.predictor.model({"image": self.predictor.transform_gen.get_transform(image).apply_image(image)})
+            # Preprocess image
+            transformed_image = self.predictor.aug.get_transform(image).apply_image(image)
+            # Convert to tensor and add batch dimension
+            image_tensor = torch.as_tensor(transformed_image.astype("float32").transpose(2, 0, 1))
             
-            # Get RPN proposals
-            proposals = outputs["proposals"].proposal_boxes.tensor.cpu().numpy()
-            proposal_scores = outputs["proposals"].objectness_logits.cpu().numpy()
+            # Format input as expected by the model
+            inputs = [{"image": image_tensor, "height": image.shape[0], "width": image.shape[1]}]
             
-            # Get final predictions
-            instances = outputs["instances"].to("cpu")
+            # Run the full model to get both proposals and predictions
+            outputs = self.predictor.model(inputs)
+            
+            # Get final predictions first
+            instances = outputs[0]["instances"].to("cpu")
             pred_boxes = instances.pred_boxes.tensor.numpy()
             pred_classes = instances.pred_classes.numpy()
             pred_scores = instances.scores.numpy()
@@ -63,7 +83,24 @@ class ProposalExtractor:
             if pred_instance_idx >= len(pred_boxes):
                 self._logger.error(f"Prediction index {pred_instance_idx} out of range")
                 return
-                
+            
+            # Now get proposals by running the model's RPN
+            images = self.predictor.model.preprocess_image(inputs)
+            features = self.predictor.model.backbone(images.tensor)
+            
+            # Get the feature names that RPN expects
+            rpn_in_features = self.predictor.model.proposal_generator.in_features
+            self._logger.info(f"RPN expects features: {rpn_in_features}")
+            self._logger.info(f"Available features: {list(features.keys())}")
+            
+            # Run RPN with the features
+            proposals = self.predictor.model.proposal_generator(images, features)[0]
+            proposals = proposals[0]  # Get proposals for the first (and only) image
+            
+            # Extract proposal boxes and scores
+            proposal_boxes = proposals.proposal_boxes.tensor.cpu().numpy()
+            proposal_scores = proposals.objectness_logits.cpu().numpy()
+            
             # Get the specific prediction we're interested in
             target_box = pred_boxes[pred_instance_idx]
             target_class = pred_classes[pred_instance_idx]
@@ -75,11 +112,11 @@ class ProposalExtractor:
                 return
             
             # Calculate IoU between the prediction and all proposals
-            ious = self._compute_ious(target_box, proposals)
+            ious = self._compute_ious(target_box, proposal_boxes)
             
             # Get proposals with significant overlap (IoU > 0.5)
             relevant_mask = ious > 0.5
-            relevant_proposals = proposals[relevant_mask]
+            relevant_proposals = proposal_boxes[relevant_mask]
             relevant_scores = proposal_scores[relevant_mask]
             
             # Create output directory for this image and prediction
@@ -154,16 +191,6 @@ class ProposalExtractor:
         """Draw a bounding box on an image."""
         x1, y1, x2, y2 = map(int, box)
         cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
-
-def setup_cfg():
-    """Set up detectron2 config."""
-    cfg = get_cfg()
-    cfg.merge_from_file(CONFIG_FILE)
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = CONFIDENCE_THRESHOLD
-    cfg.MODEL.WEIGHTS = WEIGHTS
-    cfg.MODEL.DEVICE = "cpu"  # Use CPU for easier debugging
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes)
-    return cfg
 
 def main():
     """Main function to extract proposals for a specific prediction."""

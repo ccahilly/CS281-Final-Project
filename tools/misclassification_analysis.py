@@ -117,7 +117,6 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
             # Get predictions
             pred_boxes = pred_instances.pred_boxes.tensor.numpy()
             pred_classes = pred_instances.pred_classes.numpy()
-            pred_scores = pred_instances.scores.numpy()
             
             # Compute IoU matrix between ground truth and predictions
             ious = self._compute_iou_matrix(np.array(gt_boxes), pred_boxes)
@@ -181,7 +180,6 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                             'gt_class': gt_class_name,
                             'pred_instance_idx': best_pred_idx,
                             'pred_class': best_pred_class,
-                            'pred_score': pred_scores[best_pred_idx] if best_pred_idx != -1 else None,
                             'iou': best_iou
                         }
                         self.fn_person_rider_details.append(detail)
@@ -192,7 +190,6 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                             'gt_class': gt_class_name,
                             'pred_instance_idx': best_pred_idx,
                             'pred_class': best_pred_class,
-                            'pred_score': pred_scores[best_pred_idx] if best_pred_idx != -1 else None,
                             'iou': best_iou
                         }
                         self.fn_rider_person_details.append(detail)
@@ -242,14 +239,14 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
         
         # Write detailed person-rider misclassification files
         with open(person_rider_details_file, "w") as f:
-            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,pred_score,iou\n")
+            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,iou\n")
             for detail in self.fn_person_rider_details:
-                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['pred_score']:.3f if detail['pred_score'] is not None else 'NA'},{detail['iou']:.3f}\n")
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['iou']:.3f}\n")
                 
         with open(rider_person_details_file, "w") as f:
-            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,pred_score,iou\n")
+            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,iou\n")
             for detail in self.fn_rider_person_details:
-                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['pred_score']:.3f if detail['pred_score'] is not None else 'NA'},{detail['iou']:.3f}\n")
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['iou']:.3f}\n")
         
         # Write false negatives analysis
         with open(fn_file, "w") as f:
