@@ -53,12 +53,16 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
         # Initialize true positive counts
         self.tp_counts = {cls: 0 for cls in CLASSES_OF_INTEREST}
         
+        # Initialize detailed misclassification info
+        self.fn_person_rider_details = []  # person classified as rider
+        self.fn_rider_person_details = []  # rider classified as person
+        
         self.iou_threshold = 0.5
         self._logger = logging.getLogger(__name__)
         self._predictions = []  # Initialize empty predictions list
         
         # Create output directory
-        self._output_dir = os.path.join(os.path.dirname(dataset_name), "misclassification_analysis")
+        self._output_dir = os.path.join(os.path.dirname(dataset_name), "output/misclassification_analysis")
         os.makedirs(self._output_dir, exist_ok=True)
 
     def process(self, inputs, outputs):
@@ -86,6 +90,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
             gt_instances = []
             gt_classes = []
             gt_boxes = []
+            gt_instance_ids = []  # Store instance IDs
             
             for instance_id in np.unique(gt_seg)[1:]:  # Skip background (0)
                 instance_mask = (gt_seg == instance_id)
@@ -104,6 +109,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                 gt_instances.append(instance_mask)
                 gt_classes.append(self.trainId_to_class[class_id])
                 gt_boxes.append([x_min, y_min, x_max, y_max])
+                gt_instance_ids.append(instance_id)
             
             if not gt_instances:
                 continue
@@ -120,7 +126,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
             matched_preds = set()
             
             # First pass: For each ground truth, find its best matching prediction with correct class
-            for gt_idx, gt_class in enumerate(gt_classes):
+            for gt_idx, (gt_class, gt_instance_id) in enumerate(zip(gt_classes, gt_instance_ids)):
                 gt_class_name = self.classes[gt_class]
                 if gt_class_name not in CLASSES_OF_INTEREST:
                     continue
@@ -142,9 +148,6 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                         best_iou = iou
                         best_pred_idx = pred_idx
                 
-                # Store the best IoU from TP phase for debugging
-                best_iou_tp = best_iou
-                
                 if best_iou >= self.iou_threshold:
                     # Found a match - it's a true positive
                     matched_preds.add(best_pred_idx)
@@ -154,6 +157,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                     # Find the highest IoU prediction (if any) to record what it was misclassified as
                     best_iou = 0
                     best_pred_class = "none"
+                    best_pred_idx = -1
                     
                     for pred_idx, pred_class in enumerate(pred_classes):
                         # Skip predictions that were already matched as true positives
@@ -164,17 +168,34 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                         if iou > best_iou and iou >= self.iou_threshold:
                             best_iou = iou
                             best_pred_class = self.classes[pred_class]
-                            if gt_class == pred_class:
-                                self._logger.warning(f"ALERT: Same class prediction found in misclassification phase! GT class {gt_class_name} Pred class {best_pred_class} IoU {iou:.3f}")
-                                self._logger.warning(f"Previous best IoU for this GT in TP phase was: {best_iou_tp:.3f}")
-                                # Include the file name and the image in the warning
-                                self._logger.warning(f"Image: {img_path}")
+                            best_pred_idx = pred_idx
                     
                     # Record the false negative
-                    # If no prediction has IoU >= threshold, count it as "none" regardless of class
                     self.fn_matrix[gt_class_name][best_pred_class] += 1
-                    if gt_class_name == best_pred_class:
-                        self._logger.warning(f"Recording fn_{gt_class_name}_{best_pred_class} - this should never happen!")
+                    
+                    # Store detailed information for person-rider misclassifications
+                    if gt_class_name == "person" and best_pred_class == "rider":
+                        detail = {
+                            'file_name': img_path,
+                            'gt_instance_id': gt_instance_id,
+                            'gt_class': gt_class_name,
+                            'pred_instance_idx': best_pred_idx,
+                            'pred_class': best_pred_class,
+                            'pred_score': pred_scores[best_pred_idx] if best_pred_idx != -1 else None,
+                            'iou': best_iou
+                        }
+                        self.fn_person_rider_details.append(detail)
+                    elif gt_class_name == "rider" and best_pred_class == "person":
+                        detail = {
+                            'file_name': img_path,
+                            'gt_instance_id': gt_instance_id,
+                            'gt_class': gt_class_name,
+                            'pred_instance_idx': best_pred_idx,
+                            'pred_class': best_pred_class,
+                            'pred_score': pred_scores[best_pred_idx] if best_pred_idx != -1 else None,
+                            'iou': best_iou
+                        }
+                        self.fn_rider_person_details.append(detail)
             
             # Second pass: Any unmatched predictions are false positives
             for pred_idx, pred_class in enumerate(pred_classes):
@@ -214,6 +235,21 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
         fn_file = os.path.join(self._output_dir, "false_negatives.csv")
         fp_file = os.path.join(self._output_dir, "false_positives.csv")
         tp_file = os.path.join(self._output_dir, "true_positives.csv")
+        
+        # Save detailed person-rider misclassification files
+        person_rider_details_file = os.path.join(self._output_dir, "fn_person_rider_details.csv")
+        rider_person_details_file = os.path.join(self._output_dir, "fn_rider_person_details.csv")
+        
+        # Write detailed person-rider misclassification files
+        with open(person_rider_details_file, "w") as f:
+            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,pred_score,iou\n")
+            for detail in self.fn_person_rider_details:
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['pred_score']:.3f if detail['pred_score'] is not None else 'NA'},{detail['iou']:.3f}\n")
+                
+        with open(rider_person_details_file, "w") as f:
+            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,pred_score,iou\n")
+            for detail in self.fn_rider_person_details:
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['pred_score']:.3f if detail['pred_score'] is not None else 'NA'},{detail['iou']:.3f}\n")
         
         # Write false negatives analysis
         with open(fn_file, "w") as f:

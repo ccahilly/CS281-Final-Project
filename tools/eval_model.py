@@ -57,7 +57,7 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         self._predictions = []
         
         # Create output directories
-        self._output_dir = os.path.join(os.path.dirname(dataset_name), "evaluation_output")
+        self._output_dir = os.path.join(os.path.dirname(dataset_name), "output/evaluation_output")
         self._images_dir = os.path.join(self._output_dir, "images")
         os.makedirs(self._output_dir, exist_ok=True)
         os.makedirs(self._images_dir, exist_ok=True)
