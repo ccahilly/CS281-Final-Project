@@ -142,25 +142,39 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                         best_iou = iou
                         best_pred_idx = pred_idx
                 
+                # Store the best IoU from TP phase for debugging
+                best_iou_tp = best_iou
+                
                 if best_iou >= self.iou_threshold:
                     # Found a match - it's a true positive
                     matched_preds.add(best_pred_idx)
                     self.tp_counts[gt_class_name] += 1
                 else:
-                    # No match with correct class above threshold - false negative
+                    # GT doesn't match with correct class above threshold - false negative
                     # Find the highest IoU prediction (if any) to record what it was misclassified as
                     best_iou = 0
                     best_pred_class = "none"
                     
                     for pred_idx, pred_class in enumerate(pred_classes):
+                        # Skip predictions that were already matched as true positives
+                        if pred_idx in matched_preds:
+                            continue
+                            
                         iou = ious[gt_idx, pred_idx]
                         if iou > best_iou and iou >= self.iou_threshold:
                             best_iou = iou
                             best_pred_class = self.classes[pred_class]
+                            if gt_class == pred_class:
+                                self._logger.warning(f"ALERT: Same class prediction found in misclassification phase! GT class {gt_class_name} Pred class {best_pred_class} IoU {iou:.3f}")
+                                self._logger.warning(f"Previous best IoU for this GT in TP phase was: {best_iou_tp:.3f}")
+                                # Include the file name and the image in the warning
+                                self._logger.warning(f"Image: {img_path}")
                     
                     # Record the false negative
                     # If no prediction has IoU >= threshold, count it as "none" regardless of class
                     self.fn_matrix[gt_class_name][best_pred_class] += 1
+                    if gt_class_name == best_pred_class:
+                        self._logger.warning(f"Recording fn_{gt_class_name}_{best_pred_class} - this should never happen!")
             
             # Second pass: Any unmatched predictions are false positives
             for pred_idx, pred_class in enumerate(pred_classes):
