@@ -38,7 +38,10 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
         thing_count = 0
         for label in labels:
             if label.hasInstances and not label.ignoreInEval:
+                # Map both label.id and trainId to handle both formats
                 self.trainId_to_class[label.id] = thing_count
+                if hasattr(label, 'trainId') and label.trainId >= 0:
+                    self.trainId_to_class[label.trainId] = thing_count
                 thing_count += 1
         
         # Initialize metrics
@@ -96,6 +99,10 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 continue
             original_img = original_img[:, :, ::-1]  # BGR to RGB
             
+            # Log instance counts for debugging
+            unique_instances = np.unique(gt_seg)[1:]  # Skip background
+            self._logger.debug(f"Found {len(unique_instances)} raw instances in {os.path.basename(gt_path)}")
+            
             # Create output directories for this image
             img_name = os.path.splitext(os.path.basename(img_path))[0]
             img_output_dir = os.path.join(self._images_dir, img_name)
@@ -107,15 +114,23 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
             
             # Extract ground truth instances
             gt_instances, gt_classes, gt_boxes = [], [], []
+            skipped_instances = 0
             for instance_id in np.unique(gt_seg)[1:]:  # Skip background (0)
                 instance_mask = (gt_seg == instance_id)
                 class_id = instance_id // 1000
                 
+                # Try both the class_id and the raw trainId
                 if class_id not in self.trainId_to_class:
-                    continue
+                    # Some datasets might use trainId directly
+                    if class_id not in self.trainId_to_class:
+                        skipped_instances += 1
+                        self._logger.debug(f"Skipping instance with class_id {class_id} (instance_id: {instance_id})")
+                        continue
                     
                 y_indices, x_indices = np.where(instance_mask)
                 if len(y_indices) == 0:
+                    skipped_instances += 1
+                    self._logger.debug(f"Skipping empty instance mask for class_id {class_id}")
                     continue
                     
                 x_min, x_max = np.min(x_indices), np.max(x_indices)
@@ -124,6 +139,9 @@ class DetailedCityscapesEvaluator(CityscapesInstanceEvaluator):
                 gt_instances.append(instance_mask)
                 gt_classes.append(self.trainId_to_class[class_id])
                 gt_boxes.append([x_min, y_min, x_max, y_max])
+            
+            if skipped_instances > 0:
+                self._logger.info(f"Skipped {skipped_instances} instances in {os.path.basename(gt_path)}")
             
             if not gt_instances:
                 continue

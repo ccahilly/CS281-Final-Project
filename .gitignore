@@ -3,7 +3,9 @@ output
 instant_test_output
 inference_test_output
 evaluation_output
-
+evaluation_output_complete
+misclassification_analysis
+detection_visualization
 
 *.png
 *.json

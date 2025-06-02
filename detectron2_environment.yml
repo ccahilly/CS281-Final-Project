@@ -1,0 +1,32 @@
+name: detectron2
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - numpy=1.24.3
+  - pytorch=1.13.1
+  - torchvision=0.14.1
+  - opencv
+  - pip:
+    - black
+    - cityscapesscripts==2.2.4
+    - cython
+    - matplotlib
+    - pycocotools
+    - scipy
+    - shapely
+    - tensorboard
+    - termcolor
+    - fvcore
+    - iopath
+    - omegaconf
+    - hydra-core
+    - fairscale
+    - timm
+    - scikit-learn
+    - shap==0.41.0
+    - cloudpickle
+    - tqdm>4.25.0 
