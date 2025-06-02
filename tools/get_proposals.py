@@ -7,11 +7,12 @@ import torch
 import json
 from pathlib import Path
 import cv2
+import pandas as pd
+import sys
 
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
-from detectron2.structures import Boxes, Instances
 from detectron2.utils.logger import setup_logger
 
 # Constants for evaluation configuration
@@ -124,6 +125,19 @@ class ProposalExtractor:
             output_subdir = os.path.join(self.output_dir, image_name, f"{pred_instance_idx}_{pred_class}")
             os.makedirs(output_subdir, exist_ok=True)
             
+            # Create crops directory
+            crops_dir = os.path.join(output_subdir, "crops")
+            os.makedirs(crops_dir, exist_ok=True)
+            
+            # Save crop of the final prediction
+            final_pred_crop = self._get_crop(image, target_box)
+            cv2.imwrite(os.path.join(crops_dir, f"final_prediction_score_{target_score:.3f}.jpg"), final_pred_crop)
+            
+            # Save crops of relevant proposals
+            for i, (proposal, score) in enumerate(zip(relevant_proposals, relevant_scores)):
+                proposal_crop = self._get_crop(image, proposal)
+                cv2.imwrite(os.path.join(crops_dir, f"proposal_{i:03d}_score_{score:.3f}.jpg"), proposal_crop)
+            
             # Save the original image with boxes drawn
             vis_image = image.copy()
             
@@ -191,33 +205,118 @@ class ProposalExtractor:
         """Draw a bounding box on an image."""
         x1, y1, x2, y2 = map(int, box)
         cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
+        
+    def _get_crop(self, image, box):
+        """Extract a crop from an image given a bounding box."""
+        x1, y1, x2, y2 = map(int, box)
+        # Ensure coordinates are within image bounds
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(image.shape[1], x2), min(image.shape[0], y2)
+        return image[y1:y2, x1:x2]
+
+def setup_logger():
+    """Set up the logger for real-time output."""
+    logger = logging.getLogger("detectron2")
+    formatter = logging.Formatter(
+        fmt="%(asctime)s %(message)s",
+        datefmt="%m/%d %H:%M:%S"
+    )
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+def process_misclassification_csv(csv_path, extractor):
+    """
+    Process a CSV file containing misclassification details.
+    
+    Args:
+        csv_path: Path to the CSV file with misclassification details
+        extractor: Instance of ProposalExtractor
+    """
+    logger = logging.getLogger(__name__)
+    print(f"\nProcessing misclassification file: {csv_path}", flush=True)
+    
+    # Read the CSV file
+    df = pd.read_csv(csv_path)
+    total_instances = len(df)
+    print(f"Found {total_instances} instances to process", flush=True)
+    
+    # Process each misclassification case
+    successful = 0
+    failed = 0
+    
+    for idx, row in df.iterrows():
+        image_path = row['file_name']
+        pred_instance_idx = row['pred_instance_idx']
+        pred_class = row['pred_class']
+        
+        # Calculate progress percentage
+        progress = (idx + 1) / total_instances * 100
+        print(f"Processing instance {idx + 1}/{total_instances} ({progress:.1f}%) - Image: {image_path}, Prediction: {pred_instance_idx} (class: {pred_class})", flush=True)
+        
+        try:
+            proposal_data = extractor.extract_proposals_for_prediction(
+                image_path,
+                pred_instance_idx,
+                pred_class
+            )
+            if proposal_data is None:
+                print(f"Failed to extract proposals for {image_path}", flush=True)
+                failed += 1
+            else:
+                successful += 1
+        except Exception as e:
+            print(f"Error processing {image_path}: {str(e)}", flush=True)
+            failed += 1
+    
+    # Print final statistics
+    print(f"\nFinished processing {csv_path}", flush=True)
+    print(f"Successfully processed: {successful}/{total_instances} instances", flush=True)
+    if failed > 0:
+        print(f"Failed to process: {failed}/{total_instances} instances", flush=True)
+    
+    return successful, failed
 
 def main():
-    """Main function to extract proposals for a specific prediction."""
+    """Main function to extract proposals for misclassification cases."""
     logger = setup_logger()
     
     # Parse command line arguments
     import argparse
-    parser = argparse.ArgumentParser(description="Extract RPN proposals for a specific prediction")
-    parser.add_argument("image_path", help="Path to the input image")
-    parser.add_argument("pred_instance_idx", type=int, help="Index of the prediction")
-    parser.add_argument("pred_class", help="Class name of the prediction")
+    parser = argparse.ArgumentParser(description="Extract RPN proposals for misclassification cases")
+    parser.add_argument("--fn_person_rider", default="output/misclassification_analysis_complete/fn_person_rider_details.csv",
+                      help="Path to CSV file containing person->rider misclassifications")
+    parser.add_argument("--fn_rider_person", default="output/misclassification_analysis_complete/fn_rider_person_details.csv",
+                      help="Path to CSV file containing rider->person misclassifications")
     args = parser.parse_args()
     
     # Set up config and model
     cfg = setup_cfg()
     extractor = ProposalExtractor(cfg)
     
-    # Extract proposals
-    proposal_data = extractor.extract_proposals_for_prediction(
-        args.image_path,
-        args.pred_instance_idx,
-        args.pred_class
-    )
+    total_successful = 0
+    total_failed = 0
     
-    if proposal_data is None:
-        logger.error("Failed to extract proposals")
-        return 1
+    # Process both misclassification files
+    for csv_path in [args.fn_person_rider, args.fn_rider_person]:
+        if os.path.exists(csv_path):
+            successful, failed = process_misclassification_csv(csv_path, extractor)
+            total_successful += successful
+            total_failed += failed
+        else:
+            print(f"Misclassification file not found: {csv_path}", flush=True)
+    
+    # Print overall statistics
+    total_instances = total_successful + total_failed
+    if total_instances > 0:
+        print("\n=== Overall Statistics ===", flush=True)
+        print(f"Total instances processed: {total_instances}", flush=True)
+        print(f"Total successful: {total_successful} ({total_successful/total_instances*100:.1f}%)", flush=True)
+        if total_failed > 0:
+            print(f"Total failed: {total_failed} ({total_failed/total_instances*100:.1f}%)", flush=True)
+    
     return 0
 
 if __name__ == "__main__":
