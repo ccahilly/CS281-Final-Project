@@ -34,53 +34,23 @@ def setup_cfg():
     return cfg
 
 class ModelWrapper(torch.nn.Module):
-    def __init__(self, backbone, box_pooler, box_head, box_predictor, person_idx, rider_idx):
+    def __init__(self, box_head, box_predictor, person_idx, rider_idx):
         super().__init__()
-        self.backbone = backbone
-        self.box_pooler = box_pooler
         self.box_head = box_head
         self.box_predictor = box_predictor
         self.person_idx = person_idx
         self.rider_idx = rider_idx
-        # The feature names are typically p2, p3, p4, p5 for FPN
-        self.feature_names = ["p2", "p3", "p4", "p5"]
         
-    def forward(self, x):
-        # x should be [N, C, H, W]
+    def forward(self, pooled_features):
+        # pooled_features should be the output of ROI pooling
         with torch.set_grad_enabled(True):  # Ensure gradients are computed
-            features = self.backbone(x)
-            # Get only the FPN feature levels
-            features = [features[f] for f in self.feature_names if f in features]
-            
-            # Create boxes for each image in the batch
-            boxes = []
-            for i in range(x.shape[0]):
-                box = torch.tensor([[0, 0, x.shape[3], x.shape[2]]]).float()
-                boxes.append(Boxes(box.to(x.device)))
-            
-            box_features = self.box_pooler(features, boxes)
-            box_features = self.box_head(box_features)
+            box_features = self.box_head(pooled_features)
             scores = self.box_predictor.cls_score(box_features)
             
             # Extract only person and rider scores
             person_rider_scores = scores[:, [self.person_idx, self.rider_idx]]
             return person_rider_scores
 
-class ShapAnalyzer:
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self.predictor = DefaultPredictor(cfg)
-        self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
-        self._logger = logging.getLogger(__name__)
-        
-        # Get indices for person and rider classes
-        self.person_idx = self.metadata.thing_classes.index('person')
-        self.rider_idx = self.metadata.thing_classes.index('rider')
-        
-        # Create output directory
-        self.output_dir = "output/shap_analysis"
-        os.makedirs(self.output_dir, exist_ok=True)
-        
     def analyze_proposal(self, image_path, proposal_data_path):
         """
         Analyze a proposal using SHAP, focusing on person vs. rider classification.
@@ -88,7 +58,7 @@ class ShapAnalyzer:
         print(f"\nAnalyzing proposals for image: {image_path}")
         
         # Read image and proposal data
-        image = cv2.imread(image_path)
+        image = cv2.imread(image_path)  # OpenCV reads as BGR uint8
         if image is None:
             self._logger.error(f"Could not read image: {image_path}")
             return
@@ -102,6 +72,27 @@ class ShapAnalyzer:
         box_head = self.predictor.model.roi_heads.box_head
         box_predictor = self.predictor.model.roi_heads.box_predictor
         
+        # Extract features from the full image once
+        print("Extracting features from full image...")
+        with torch.no_grad():
+            # Convert BGR uint8 to RGB float32 tensor with batch dimension
+            image_tensor = torch.from_numpy(image.transpose(2, 0, 1).astype(np.float32)) / 255.0
+            image_tensor = image_tensor.unsqueeze(0)
+            
+            # Get features from backbone
+            features_dict = self.predictor.model.backbone(image_tensor)
+            # Get FPN feature levels
+            feature_names = ["p2", "p3", "p4", "p5"]
+            features = [features_dict[f] for f in feature_names if f in features_dict]
+        
+        # Create model wrapper that works with pooled features
+        model = ModelWrapper(
+            box_head,
+            box_predictor,
+            self.person_idx,
+            self.rider_idx
+        )
+        
         # Process each proposal
         results = []
         for i, proposal in enumerate(proposal_data['relevant_proposals']):
@@ -112,36 +103,15 @@ class ShapAnalyzer:
                 x1, y1, x2, y2 = map(int, box[0])
                 print(f"Proposal box coordinates: ({x1}, {y1}, {x2}, {y2})")
                 
-                # Extract the proposal region from the image
-                proposal_image = image[y1:y2, x1:x2]
-                if proposal_image.size == 0:
-                    print(f"Skipping proposal {i} - empty region")
-                    continue
-                    
-                print("Resizing proposal image...")
-                # Resize to a standard size for analysis
-                proposal_image = cv2.resize(proposal_image, (224, 224))
+                # Create Boxes object for the proposal
+                boxes = [Boxes(box.to(image_tensor.device))]
                 
-                print("Creating model wrapper...")
-                # Create model wrapper
-                model = ModelWrapper(
-                    self.predictor.model.backbone,
-                    self.predictor.model.roi_heads.box_pooler,
-                    box_head,
-                    box_predictor,
-                    self.person_idx,
-                    self.rider_idx
-                )
+                # Get pooled features for this proposal
+                with torch.no_grad():
+                    pooled_features = self.predictor.model.roi_heads.box_pooler(features, boxes)
                 
-                print("Preprocessing image...")
-                # Preprocess image
-                image_tensor = torch.from_numpy(
-                    proposal_image.transpose(2, 0, 1).astype(np.float32)
-                ) / 255.0
-                image_tensor = image_tensor.unsqueeze(0)  # Add batch dimension
-                
-                # Create background distribution
-                background = torch.zeros_like(image_tensor)
+                # Create background distribution for SHAP (zero tensor of same size)
+                background = torch.zeros_like(pooled_features)
                 
                 print("Creating SHAP explainer...")
                 # Create explainer using GradientExplainer
@@ -149,12 +119,12 @@ class ShapAnalyzer:
                 
                 print("Calculating SHAP values...")
                 # Calculate SHAP values
-                shap_values = explainer.shap_values(image_tensor)
+                shap_values = explainer.shap_values(pooled_features)
                 
                 print("Getting model predictions...")
                 # Get prediction
                 with torch.no_grad():
-                    pred = model(image_tensor)
+                    pred = model(pooled_features)
                     probs = torch.nn.functional.softmax(pred, dim=1)
                     pred_class_idx = probs[0].argmax().item()  # 0 for person, 1 for rider
                     pred_score = probs[0][pred_class_idx].item()
@@ -162,6 +132,9 @@ class ShapAnalyzer:
                     pred_class = class_names[pred_class_idx]
                 
                 print(f"Prediction: {pred_class} with score {pred_score:.3f}")
+                
+                # Extract the proposal region from the image for visualization
+                proposal_image = image[y1:y2, x1:x2]
                 
                 # Save results
                 result = {
@@ -185,29 +158,47 @@ class ShapAnalyzer:
                 # Create figure with three subplots
                 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
                 
-                # Plot original image
+                # Plot original image (convert BGR to RGB for matplotlib)
                 ax1.imshow(cv2.cvtColor(proposal_image, cv2.COLOR_BGR2RGB))
                 ax1.set_title(f"Original Proposal\nPrediction: {pred_class} ({pred_score:.3f})")
                 ax1.axis('off')
                 
-                # Plot SHAP values for person class
-                shap_person = shap_values[0][0] if isinstance(shap_values, list) else shap_values[0]
-                shap_person = np.transpose(shap_person, (1, 2, 0))
-                person_map = shap_person.sum(axis=2)
-                abs_max = np.abs(person_map).max()
-                im2 = ax2.imshow(person_map, cmap='RdBu_r', vmin=-abs_max, vmax=abs_max)
-                ax2.set_title(f"SHAP values for 'person'\nProbability: {probs[0][0]:.3f}")
-                ax2.axis('off')
-                plt.colorbar(im2, ax=ax2)
+                # Process SHAP values for person class
+                shap_person = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+                person_map = shap_person.mean(axis=1)  # Average over channels
+                # Resize person_map to match proposal image size
+                person_map = cv2.resize(person_map, (proposal_image.shape[1], proposal_image.shape[0]))
                 
-                # Plot SHAP values for rider class
-                shap_rider = shap_values[1][0] if isinstance(shap_values, list) else shap_values[1]
-                shap_rider = np.transpose(shap_rider, (1, 2, 0))
-                rider_map = shap_rider.sum(axis=2)
-                im3 = ax3.imshow(rider_map, cmap='RdBu_r', vmin=-abs_max, vmax=abs_max)
-                ax3.set_title(f"SHAP values for 'rider'\nProbability: {probs[0][1]:.3f}")
+                # Process SHAP values for rider class
+                shap_rider = shap_values[1] if isinstance(shap_values, list) else shap_values[1]
+                rider_map = shap_rider.mean(axis=1)  # Average over channels
+                # Resize rider_map to match proposal image size
+                rider_map = cv2.resize(rider_map, (proposal_image.shape[1], proposal_image.shape[0]))
+                
+                # Normalize SHAP values for visualization
+                abs_max = max(np.abs(person_map).max(), np.abs(rider_map).max())
+                person_map = person_map / abs_max
+                rider_map = rider_map / abs_max
+                
+                # Create overlays for person class
+                proposal_rgb = cv2.cvtColor(proposal_image, cv2.COLOR_BGR2RGB)
+                person_heatmap = plt.cm.RdBu_r(0.5 + person_map/2)[:, :, :3]  # Convert to RGB, exclude alpha
+                person_overlay = (proposal_rgb / 255.0 * 0.7 + person_heatmap * 0.3)  # Blend with original image
+                person_overlay = np.clip(person_overlay, 0, 1)
+                
+                # Create overlays for rider class
+                rider_heatmap = plt.cm.RdBu_r(0.5 + rider_map/2)[:, :, :3]  # Convert to RGB, exclude alpha
+                rider_overlay = (proposal_rgb / 255.0 * 0.7 + rider_heatmap * 0.3)  # Blend with original image
+                rider_overlay = np.clip(rider_overlay, 0, 1)
+                
+                # Plot overlaid SHAP values
+                ax2.imshow(person_overlay)
+                ax2.set_title(f"SHAP values for 'person' (overlaid)\nProbability: {probs[0][0]:.3f}")
+                ax2.axis('off')
+                
+                ax3.imshow(rider_overlay)
+                ax3.set_title(f"SHAP values for 'rider' (overlaid)\nProbability: {probs[0][1]:.3f}")
                 ax3.axis('off')
-                plt.colorbar(im3, ax=ax3)
                 
                 plt.tight_layout()
                 plt.savefig(shap_img_path)
@@ -221,14 +212,184 @@ class ShapAnalyzer:
                 print(traceback.format_exc())
                 continue
         
-        # Save all results to JSON
-        output_path = os.path.join(
-            self.output_dir,
-            f"{Path(image_path).stem}_shap_analysis.json"
-        )
-        with open(output_path, 'w') as f:
-            json.dump(results, f, indent=2)
+        return results
+
+class ShapAnalyzer:
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.predictor = DefaultPredictor(cfg)
+        self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
+        self._logger = logging.getLogger(__name__)
+        
+        # Get indices for person and rider classes
+        self.person_idx = self.metadata.thing_classes.index('person')
+        self.rider_idx = self.metadata.thing_classes.index('rider')
+        
+        # Create output directory
+        self.output_dir = "output/shap_analysis"
+        os.makedirs(self.output_dir, exist_ok=True)
+        
+    def analyze_proposal(self, image_path, proposal_data_path):
+        """
+        Analyze a proposal using SHAP, focusing on person vs. rider classification.
+        """
+        print(f"\nAnalyzing proposals for image: {image_path}")
+        
+        # Read image and proposal data
+        image = cv2.imread(image_path)  # OpenCV reads as BGR uint8
+        if image is None:
+            self._logger.error(f"Could not read image: {image_path}")
+            return
             
+        with open(proposal_data_path, 'r') as f:
+            proposal_data = json.load(f)
+        
+        print(f"Found {len(proposal_data['relevant_proposals'])} proposals to analyze")
+        
+        # Get the model's box head and predictor
+        box_head = self.predictor.model.roi_heads.box_head
+        box_predictor = self.predictor.model.roi_heads.box_predictor
+        
+        # Extract features from the full image once
+        print("Extracting features from full image...")
+        with torch.no_grad():
+            # Convert BGR uint8 to RGB float32 tensor with batch dimension
+            image_tensor = torch.from_numpy(image.transpose(2, 0, 1).astype(np.float32)) / 255.0
+            image_tensor = image_tensor.unsqueeze(0)
+            
+            # Get features from backbone
+            features_dict = self.predictor.model.backbone(image_tensor)
+            # Get FPN feature levels
+            feature_names = ["p2", "p3", "p4", "p5"]
+            features = [features_dict[f] for f in feature_names if f in features_dict]
+        
+        # Create model wrapper that works with pooled features
+        model = ModelWrapper(
+            box_head,
+            box_predictor,
+            self.person_idx,
+            self.rider_idx
+        )
+        
+        # Process each proposal
+        results = []
+        for i, proposal in enumerate(proposal_data['relevant_proposals']):
+            print(f"\nProcessing proposal {i+1}/{len(proposal_data['relevant_proposals'])}")
+            try:
+                # Get proposal box
+                box = torch.tensor(proposal['box']).unsqueeze(0)
+                x1, y1, x2, y2 = map(int, box[0])
+                print(f"Proposal box coordinates: ({x1}, {y1}, {x2}, {y2})")
+                
+                # Create Boxes object for the proposal
+                boxes = [Boxes(box.to(image_tensor.device))]
+                
+                # Get pooled features for this proposal
+                with torch.no_grad():
+                    pooled_features = self.predictor.model.roi_heads.box_pooler(features, boxes)
+                
+                # Create background distribution for SHAP (zero tensor of same size)
+                background = torch.zeros_like(pooled_features)
+                
+                print("Creating SHAP explainer...")
+                # Create explainer using GradientExplainer
+                explainer = shap.GradientExplainer(model, background)
+                
+                print("Calculating SHAP values...")
+                # Calculate SHAP values
+                shap_values = explainer.shap_values(pooled_features)
+                
+                print("Getting model predictions...")
+                # Get prediction
+                with torch.no_grad():
+                    pred = model(pooled_features)
+                    probs = torch.nn.functional.softmax(pred, dim=1)
+                    pred_class_idx = probs[0].argmax().item()  # 0 for person, 1 for rider
+                    pred_score = probs[0][pred_class_idx].item()
+                    class_names = ['person', 'rider']
+                    pred_class = class_names[pred_class_idx]
+                
+                print(f"Prediction: {pred_class} with score {pred_score:.3f}")
+                
+                # Extract the proposal region from the image for visualization
+                proposal_image = image[y1:y2, x1:x2]
+                
+                # Save results
+                result = {
+                    'proposal_idx': i,
+                    'box': proposal['box'],
+                    'score': proposal['score'],
+                    'iou': proposal['iou'],
+                    'predicted_class': pred_class,
+                    'person_prob': float(probs[0][0]),  # probability of person
+                    'rider_prob': float(probs[0][1]),   # probability of rider
+                }
+                results.append(result)
+                
+                print("Generating visualization...")
+                # Save SHAP visualization
+                shap_img_path = os.path.join(
+                    self.output_dir,
+                    f"{Path(image_path).stem}_proposal_{i}_shap.png"
+                )
+                
+                # Create figure with three subplots
+                fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
+                
+                # Plot original image (convert BGR to RGB for matplotlib)
+                ax1.imshow(cv2.cvtColor(proposal_image, cv2.COLOR_BGR2RGB))
+                ax1.set_title(f"Original Proposal\nPrediction: {pred_class} ({pred_score:.3f})")
+                ax1.axis('off')
+                
+                # Process SHAP values for person class
+                shap_person = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+                person_map = shap_person.mean(axis=1)  # Average over channels
+                # Resize person_map to match proposal image size
+                person_map = cv2.resize(person_map, (proposal_image.shape[1], proposal_image.shape[0]))
+                
+                # Process SHAP values for rider class
+                shap_rider = shap_values[1] if isinstance(shap_values, list) else shap_values[1]
+                rider_map = shap_rider.mean(axis=1)  # Average over channels
+                # Resize rider_map to match proposal image size
+                rider_map = cv2.resize(rider_map, (proposal_image.shape[1], proposal_image.shape[0]))
+                
+                # Normalize SHAP values for visualization
+                abs_max = max(np.abs(person_map).max(), np.abs(rider_map).max())
+                person_map = person_map / abs_max
+                rider_map = rider_map / abs_max
+                
+                # Create overlays for person class
+                proposal_rgb = cv2.cvtColor(proposal_image, cv2.COLOR_BGR2RGB)
+                person_heatmap = plt.cm.RdBu_r(0.5 + person_map/2)[:, :, :3]  # Convert to RGB, exclude alpha
+                person_overlay = (proposal_rgb / 255.0 * 0.7 + person_heatmap * 0.3)  # Blend with original image
+                person_overlay = np.clip(person_overlay, 0, 1)
+                
+                # Create overlays for rider class
+                rider_heatmap = plt.cm.RdBu_r(0.5 + rider_map/2)[:, :, :3]  # Convert to RGB, exclude alpha
+                rider_overlay = (proposal_rgb / 255.0 * 0.7 + rider_heatmap * 0.3)  # Blend with original image
+                rider_overlay = np.clip(rider_overlay, 0, 1)
+                
+                # Plot overlaid SHAP values
+                ax2.imshow(person_overlay)
+                ax2.set_title(f"SHAP values for 'person' (overlaid)\nProbability: {probs[0][0]:.3f}")
+                ax2.axis('off')
+                
+                ax3.imshow(rider_overlay)
+                ax3.set_title(f"SHAP values for 'rider' (overlaid)\nProbability: {probs[0][1]:.3f}")
+                ax3.axis('off')
+                
+                plt.tight_layout()
+                plt.savefig(shap_img_path)
+                plt.close()
+                
+                print(f"Saved visualization to {shap_img_path}")
+                
+            except Exception as e:
+                print(f"Error processing proposal {i}: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                continue
+        
         return results
 
 def process_all_proposals(analyzer):
