@@ -3,10 +3,10 @@ import cv2
 import torch
 import shap
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from detectron2.config import get_cfg
-from detectron2.engine import default_setup
 from detectron2.modeling import build_model
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.utils.logger import setup_logger
@@ -26,89 +26,109 @@ def setup_cfg():
     return cfg
 
 
-cfg = setup_cfg()
-setup_logger()
-model = build_model(cfg)
-DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
-model.eval()
-
-# --- Load and transform image ---
-img_path = "datasets/cityscapes/leftImg8bit/val/frankfurt/frankfurt_000000_000294_leftImg8bit.png"
-image = cv2.imread(img_path)[:, :, ::-1]  # BGR to RGB
-
-transform_gen = T.ResizeShortestEdge(
-    [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST],
-    cfg.INPUT.MAX_SIZE_TEST
-)
-transform = transform_gen.get_transform(image)
-image_transformed = transform.apply_image(image)
-height, width = image_transformed.shape[:2]
-
-# Convert to tensor
-image_tensor = torch.as_tensor(image_transformed.copy().transpose(2, 0, 1)).float().to(cfg.MODEL.DEVICE)
-
-# Wrap as Detectron2 input format
-inputs = [{
-    "image": image_tensor,
-    "height": height,
-    "width": width,
-    "file_name": img_path
-}]
-
-# --- Forward pass ---
-with torch.no_grad():
-    outputs = model(inputs)
-
-instances = outputs[0]["instances"]
-if len(instances) == 0:
-    raise ValueError("No instances detected in image.")
-
-# --- Define wrapped model with class names ---
 class WrappedModel(torch.nn.Module):
-    def __init__(self, model, cfg):
+    def __init__(self, model, cfg, instance_idx):
         super().__init__()
         self.model = model
         self.cfg = cfg
+        self.instance_idx = instance_idx
         self.class_names = MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes
 
     def forward(self, x):
-        outputs = self.model([{
+        input_dicts = [{
             "image": x[i],
             "height": x.shape[2],
             "width": x.shape[3],
-            "file_name": f"shap_injected_{i}"
-        } for i in range(x.shape[0])])
-        return torch.stack([
-            out["instances"].all_scores[0] for out in outputs
-        ])
+            "file_name": f"shap_{i}"
+        } for i in range(x.shape[0])]
 
-wrapped_model = WrappedModel(model, cfg)
+        with torch.set_grad_enabled(True):
+            outputs = self.model(input_dicts)  # ← this returns a list of dicts
 
-# --- SHAP for "rider" and "person" ---
-image_tensor.requires_grad_()
-explainer = shap.GradientExplainer(wrapped_model, image_tensor.unsqueeze(0))
+        instances = outputs[0]["instances"]
+        logits = instances.all_logits[self.instance_idx][:-1]  # [num_classes], drop background
 
-target_classes = ["rider", "person"]
-target_class_indices = [wrapped_model.class_names.index(c) for c in target_classes]
+        print("requires_grad?", logits.requires_grad)
+        return logits.unsqueeze(0)  # shape: [1, num_classes]
 
-print("🚀 Computing SHAP for selected classes...")
+# --- Main SHAP logic ---
+def compute_shap_for_row(cfg, model, row):
+    file_name = row["file_name"]
+    gt_class = row["gt_class"]
+    pred_class = row["pred_class"]
+    pred_instance_idx = int(row["pred_instance_idx"])
 
-for class_idx in target_class_indices:
-    print(f"🔍 Explaining class {class_idx} ({wrapped_model.class_names[class_idx]})...")
-    # Run forward pass
+    assert gt_class in ["rider", "person"], f"Invalid gt_class: {gt_class}"
+    assert pred_class in ["rider", "person"], f"Invalid pred_class: {pred_class}"
+
+    class_names = MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes
+    class_idx = class_names.index(pred_class)
+
+    print(f"📂 Processing: {file_name} | Instance: {pred_instance_idx} | Class: {pred_class}")
+
+    # Load and transform image
+    image = cv2.imread(file_name)[:, :, ::-1]  # BGR to RGB
+    transform_gen = T.ResizeShortestEdge(
+        [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST],
+        cfg.INPUT.MAX_SIZE_TEST
+    )
+    transform = transform_gen.get_transform(image)
+    image_transformed = transform.apply_image(image)
+    height, width = image_transformed.shape[:2]
+
+    image_tensor = torch.as_tensor(image_transformed.copy().transpose(2, 0, 1)).float().to(cfg.MODEL.DEVICE)
+    image_tensor.requires_grad_()
+
+    # SHAP for this instance + class
+    wrapped_model = WrappedModel(model, cfg, pred_instance_idx)
+    explainer = shap.GradientExplainer(wrapped_model, image_tensor.unsqueeze(0))
+
     output = wrapped_model(image_tensor.unsqueeze(0))
-    
-    # Zero grads and backprop on just this class score
+    print("Requires grad?", output.requires_grad)
+    print("Grad fn:", output.grad_fn)
+    print("Is leaf?", output.is_leaf)
+
     model.zero_grad()
     if image_tensor.grad is not None:
         image_tensor.grad.zero_()
 
-    class_score = output[0, class_idx]
-    class_score.backward(retain_graph=True)
+    shap_vals = explainer.shap_values(
+        image_tensor.unsqueeze(0),
+        ranked_outputs=1,
+        output_rank_order='max',
+        nsamples=10
+    )
 
-    # SHAP computes attribution for that class
-    # shap_vals = explainer.shap_values(image_tensor.unsqueeze(0))
-    shap_vals = explainer.shap_values(image_tensor.unsqueeze(0), nsamples=10)
-    shap.image_plot(shap_vals, np.array([image_transformed / 255.0]))
+    # Save results
+    img_id = os.path.splitext(os.path.basename(file_name))[0]
+    save_name = f"shap_values_{pred_class}_{img_id}_inst{pred_instance_idx}.npz"
+    save_path = os.path.join("output", save_name)
+    for shap_val in shap_vals:
+        print(f"SHAP value shape: {np.array(shap_val).shape}")
+    np.savez_compressed(
+        save_path,
+        shap_values=np.array(shap_vals[0]),
+        input_image=image_transformed,
+        class_name=pred_class,
+        image_path=file_name,
+        instance_idx=pred_instance_idx,
+        gt_class=gt_class
+    )
+    print(f"✅ Saved to: {save_path}")
 
-print("✅ Done.")
+
+if __name__ == "__main__":
+    cfg = setup_cfg()
+    setup_logger()
+    model = build_model(cfg)
+    DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
+    model.eval()
+
+    df = pd.read_csv("output/misclassification_analysis/fn_person_person_details.csv")
+    os.makedirs("output", exist_ok=True)
+
+    for _, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
+        try:
+            compute_shap_for_row(cfg, model, row)
+        except Exception as e:
+            print(f"❌ Error on row {row['file_name']}: {e}")

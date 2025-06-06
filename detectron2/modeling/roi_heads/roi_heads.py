@@ -900,13 +900,10 @@ class ROIHeadsWithAllScores(StandardROIHeads):
         else:
             pred_instances, _ = self.box_predictor.inference(predictions, proposals)
 
-            # Add full class scores to each instance
             start = 0
             for instances_per_image in pred_instances:
                 num_instances = len(instances_per_image)
-                class_logits = pred_class_logits[start:start + num_instances]
-                instances_per_image.all_scores = class_logits.softmax(dim=-1)
-                instances_per_image.all_logits = class_logits  # if you want raw logits too
+                instances_per_image.all_logits = pred_class_logits[start:start + num_instances]
                 start += num_instances
 
             return pred_instances
