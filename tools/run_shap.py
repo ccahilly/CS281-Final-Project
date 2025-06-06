@@ -46,9 +46,13 @@ class WrappedModel(torch.nn.Module):
             outputs = self.model(input_dicts)  # ← this returns a list of dicts
 
         instances = outputs[0]["instances"]
+        print(f"Instances found: {len(instances)}")
         logits = instances.all_logits[self.instance_idx][:-1]  # [num_classes], drop background
+        for i in range(len(logits)):
+            print(f"Class {self.class_names[i]}: {logits[i].item():.3f}")
 
         print("requires_grad?", logits.requires_grad)
+        print("Logits shape:", logits.shape)
         return logits.unsqueeze(0)  # shape: [1, num_classes]
 
 # --- Main SHAP logic ---
@@ -84,10 +88,7 @@ def compute_shap_for_row(cfg, model, row):
     explainer = shap.GradientExplainer(wrapped_model, image_tensor.unsqueeze(0))
 
     output = wrapped_model(image_tensor.unsqueeze(0))
-    print("Requires grad?", output.requires_grad)
-    print("Grad fn:", output.grad_fn)
-    print("Is leaf?", output.is_leaf)
-
+    
     model.zero_grad()
     if image_tensor.grad is not None:
         image_tensor.grad.zero_()

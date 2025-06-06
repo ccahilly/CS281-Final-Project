@@ -5,8 +5,6 @@ Enhanced Detection-Aware Saliency Map Analysis with Multiple Attribution Methods
 This implementation supports:
 1. Vanilla Gradients (your current method)
 2. Input × Gradients (Shrikumar et al. 2017)
-3. Integrated Gradients (Sundararajan et al. 2017)
-4. SmoothGrad (Smilkov et al. 2017) - bonus method for noise reduction
 """
 
 import os
@@ -35,8 +33,6 @@ class EnhancedDetectionSaliencyMap:
     Supports:
     - vanilla_gradients: Standard gradients (your current method)
     - input_gradients: Input × Gradients (Shrikumar et al. 2017)
-    - integrated_gradients: Integrated Gradients (Sundararajan et al. 2017)
-    - smoothgrad: SmoothGrad with any base method
     """
     
     def __init__(self, model, cfg):
@@ -51,7 +47,7 @@ class EnhancedDetectionSaliencyMap:
         self.cfg = cfg
         self.model.eval()
         
-    def compute_instance_saliency(self, img_path, target_instance_idx, method='integrated_gradients', **kwargs):
+    def compute_instance_saliency(self, img_path, target_instance_idx, method='vanilla_gradients', **kwargs):
         """
         Compute saliency map for a specific detected instance using various methods.
         
@@ -61,12 +57,7 @@ class EnhancedDetectionSaliencyMap:
             method: Attribution method to use
                    - 'vanilla_gradients': Standard gradients
                    - 'input_gradients': Input × Gradients
-                   - 'integrated_gradients': Integrated Gradients
-                   - 'smoothgrad_vanilla': SmoothGrad with vanilla gradients
-                   - 'smoothgrad_input': SmoothGrad with input × gradients
             **kwargs: Additional arguments for specific methods
-                     For integrated_gradients: steps (default=50), baseline (default='black')
-                     For smoothgrad: noise_samples (default=50), noise_level (default=0.15)
             
         Returns:
             saliency_map: Pixel importance map (same size as original image)
@@ -92,20 +83,6 @@ class EnhancedDetectionSaliencyMap:
         elif method == 'input_gradients':
             saliency_map_raw, outputs = self._input_gradients(
                 transformed_img, height, width, target_instance_idx
-            )
-        elif method == 'integrated_gradients':
-            steps = kwargs.get('steps', 50)
-            baseline = kwargs.get('baseline', 'black')
-            saliency_map_raw, outputs = self._integrated_gradients(
-                transformed_img, height, width, target_instance_idx, steps, baseline
-            )
-        elif method.startswith('smoothgrad'):
-            base_method = method.split('_')[1] if '_' in method else 'vanilla'
-            noise_samples = kwargs.get('noise_samples', 50)
-            noise_level = kwargs.get('noise_level', 0.15)
-            saliency_map_raw, outputs = self._smoothgrad(
-                transformed_img, height, width, target_instance_idx, 
-                base_method, noise_samples, noise_level
             )
         else:
             raise ValueError(f"Unknown method: {method}")
@@ -182,151 +159,6 @@ class EnhancedDetectionSaliencyMap:
         )
         
         return saliency_map_raw, outputs[0]
-
-    def _integrated_gradients(self, transformed_img, height, width, target_instance_idx, 
-                            steps=20, baseline='blur'):
-        """Integrated Gradients method (Sundararajan et al. 2017) - Detection-aware version."""
-        print(f"    Starting Integrated Gradients with {steps} steps, baseline: {baseline}")
-        
-        try:
-            # Create baseline - using blur by default for object detection
-            if baseline == 'black':
-                baseline_img = np.zeros_like(transformed_img)
-            elif baseline == 'white':
-                baseline_img = np.ones_like(transformed_img) * 255
-            elif baseline == 'blur':
-                # Heavy Gaussian blur as baseline - still recognizable but removes fine details
-                baseline_img = cv2.GaussianBlur(transformed_img, (101, 101), 50)
-            elif baseline == 'noise':
-                # Structured noise baseline
-                baseline_img = np.random.normal(128, 50, transformed_img.shape).clip(0, 255).astype(np.float32)
-            elif isinstance(baseline, (int, float)):
-                baseline_img = np.full_like(transformed_img, baseline)
-            else:
-                raise ValueError(f"Unknown baseline type: {baseline}")
-            
-            print(f"    Created baseline image with shape: {baseline_img.shape}")
-            
-            # First, get the reference detection from the original image to know what we're looking for
-            input_tensor_ref = torch.as_tensor(
-                transformed_img.astype("float32").transpose(2, 0, 1)
-            ).to(self.cfg.MODEL.DEVICE)
-            
-            with torch.no_grad():  # Don't track gradients for reference
-                ref_outputs = self.model([{
-                    "image": input_tensor_ref,
-                    "height": height,
-                    "width": width
-                }])
-            
-            ref_instances = ref_outputs[0]["instances"]
-            if target_instance_idx >= len(ref_instances):
-                print(f"    Error: Target instance {target_instance_idx} not found in reference (only {len(ref_instances)} instances)")
-                return None, ref_outputs[0]
-                
-            # Get the reference bounding box and class to track across interpolations
-            ref_bbox = ref_instances.pred_boxes.tensor[target_instance_idx].detach().cpu().numpy()
-            ref_class = ref_instances.pred_classes[target_instance_idx].detach().cpu().item()
-            print(f"    Reference detection: class {ref_class}, bbox {ref_bbox}")
-            
-            # Convert to tensors
-            input_tensor = torch.as_tensor(
-                transformed_img.astype("float32").transpose(2, 0, 1)
-            ).to(self.cfg.MODEL.DEVICE)
-            
-            baseline_tensor = torch.as_tensor(
-                baseline_img.astype("float32").transpose(2, 0, 1)
-            ).to(self.cfg.MODEL.DEVICE)
-            
-            # Initialize variables
-            integrated_grads = torch.zeros_like(input_tensor)
-            valid_steps = 0
-            
-            # Compute integrated gradients with detection tracking
-            for i in range(steps):
-                if i % 5 == 0 or i == steps - 1:
-                    print(f"    Progress: {i+1}/{steps} steps")
-                
-                try:
-                    # Linear interpolation between baseline and input
-                    alpha = float(i) / (steps - 1) if steps > 1 else 1.0
-                    interpolated_input = baseline_tensor + alpha * (input_tensor - baseline_tensor)
-                    interpolated_input.requires_grad = True
-                    
-                    # Forward pass
-                    curr_outputs = self.model([{
-                        "image": interpolated_input,
-                        "height": height,
-                        "width": width
-                    }])
-                    
-                    instances = curr_outputs[0]["instances"]
-                    
-                    if len(instances) == 0:
-                        print(f"    Step {i}: No instances detected, skipping")
-                        continue
-                    
-                    # Find the best matching detection to our reference
-                    best_match_idx = self._find_best_matching_detection(
-                        instances, ref_bbox, ref_class
-                    )
-                    
-                    if best_match_idx is None:
-                        print(f"    Step {i}: No matching detection found, skipping")
-                        continue
-                    
-                    detection_score = instances.scores[best_match_idx]
-                    
-                    # Backward pass
-                    self.model.zero_grad()
-                    detection_score.backward(retain_graph=False)
-                    
-                    # Check if gradients were computed
-                    if interpolated_input.grad is None:
-                        print(f"    Warning: No gradients computed at step {i}")
-                        continue
-                    
-                    # Accumulate gradients
-                    integrated_grads += interpolated_input.grad.data
-                    valid_steps += 1
-                    
-                except Exception as step_error:
-                    print(f"    Error at step {i}: {step_error}")
-                    continue
-            
-            print(f"    Completed gradient accumulation from {valid_steps}/{steps} valid steps")
-            
-            if valid_steps == 0:
-                print("    Error: No valid steps for gradient computation")
-                return None, ref_outputs[0]
-            
-            # Average the gradients and multiply by (input - baseline)
-            integrated_grads = integrated_grads / valid_steps
-            integrated_grads = (input_tensor - baseline_tensor) * integrated_grads
-            
-            # Take absolute value and average across channels
-            saliency_map_raw = integrated_grads.abs().mean(dim=0).cpu().numpy()
-            
-            print(f"    Saliency map shape: {saliency_map_raw.shape}")
-            print(f"    Saliency range: [{saliency_map_raw.min():.6f}, {saliency_map_raw.max():.6f}]")
-            
-            # Normalize
-            if saliency_map_raw.max() > saliency_map_raw.min():
-                saliency_map_raw = (saliency_map_raw - saliency_map_raw.min()) / (
-                    saliency_map_raw.max() - saliency_map_raw.min()
-                )
-            else:
-                print("    Warning: Constant saliency map, setting to zeros")
-                saliency_map_raw = np.zeros_like(saliency_map_raw)
-            
-            print("    Integrated Gradients completed successfully")
-            return saliency_map_raw, ref_outputs[0]
-            
-        except Exception as e:
-            print(f"    Error in Integrated Gradients: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return None, None
     
     def _find_best_matching_detection(self, instances, ref_bbox, ref_class):
         """Find the detection that best matches the reference detection."""
@@ -378,49 +210,6 @@ class EnhancedDetectionSaliencyMap:
         union = area1 + area2 - intersection
         return intersection / union if union > 0 else 0.0
 
-    def _smoothgrad(self, transformed_img, height, width, target_instance_idx, 
-                   base_method='vanilla', noise_samples=50, noise_level=0.15):
-        """SmoothGrad method (Smilkov et al. 2017) with different base methods."""
-        
-        accumulated_saliency = None
-        outputs = None
-        
-        for i in range(noise_samples):
-            # Add noise to input
-            noise = np.random.normal(0, noise_level * 255, transformed_img.shape).astype(np.float32)
-            noisy_img = np.clip(transformed_img + noise, 0, 255)
-            
-            # Compute saliency with base method
-            if base_method == 'vanilla':
-                saliency, curr_outputs = self._vanilla_gradients(
-                    noisy_img, height, width, target_instance_idx
-                )
-            elif base_method == 'input':
-                saliency, curr_outputs = self._input_gradients(
-                    noisy_img, height, width, target_instance_idx
-                )
-            else:
-                raise ValueError(f"Unknown base method for SmoothGrad: {base_method}")
-            
-            if saliency is None:
-                return None, curr_outputs
-                
-            # Store outputs from first iteration
-            if outputs is None:
-                outputs = curr_outputs
-                
-            # Accumulate saliency maps
-            if accumulated_saliency is None:
-                accumulated_saliency = saliency
-            else:
-                accumulated_saliency += saliency
-        
-        # Average across all noise samples
-        saliency_map_raw = accumulated_saliency / noise_samples
-        
-        return saliency_map_raw, outputs
-
-
 class EnhancedMisclassificationSaliencyAnalyzer:
     """
     Enhanced analyzer supporting multiple attribution methods.
@@ -460,7 +249,7 @@ class EnhancedMisclassificationSaliencyAnalyzer:
         
     def analyze_misclassified_instance_multimethod(self, img_path, pred_instance_idx, 
                                                   true_class, pred_class,
-                                                  methods=['vanilla_gradients', 'input_gradients', 'integrated_gradients'],
+                                                  methods=['vanilla_gradients', 'input_gradients'],
                                                   output_dir="enhanced_detection_saliency_analysis"):
         """
         Analyze a single misclassified detection using multiple saliency methods.
@@ -502,11 +291,7 @@ class EnhancedMisclassificationSaliencyAnalyzer:
             try:
                 # Method-specific parameters
                 method_kwargs = {}
-                if method == 'integrated_gradients':
-                    method_kwargs = {'steps': 15, 'baseline': 'blur'}  # Use blur baseline and fewer steps
-                elif method.startswith('smoothgrad'):
-                    method_kwargs = {'noise_samples': 25, 'noise_level': 0.1}  # Reduced for faster computation
-                
+
                 # Compute saliency map
                 saliency_map, saliency_map_raw, output = self.saliency_generator.compute_instance_saliency(
                     img_path, pred_instance_idx, method=method, **method_kwargs
@@ -707,7 +492,7 @@ def main():
                        default="output/enhanced_detection_saliency_analysis",
                        help="Output directory for analysis results")
     parser.add_argument("--methods", nargs='+',
-                       default=['vanilla_gradients', 'input_gradients', 'integrated_gradients'],
+                       default=['vanilla_gradients', 'input_gradients'],
                        help="Attribution methods to use")
     parser.add_argument("--max_samples", type=int, default=100,
                        help="Maximum number of samples to process (for testing)")
