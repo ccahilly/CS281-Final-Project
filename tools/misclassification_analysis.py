@@ -130,6 +130,9 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                 if gt_class_name not in CLASSES_OF_INTEREST:
                     continue
                 
+                # Get ground truth bounding box
+                gt_box = gt_boxes[gt_idx]
+                
                 # Find best matching prediction with correct class
                 best_iou = 0
                 best_pred_idx = -1
@@ -157,6 +160,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                     best_iou = 0
                     best_pred_class = "none"
                     best_pred_idx = -1
+                    best_pred_box = None
                     
                     for pred_idx, pred_class in enumerate(pred_classes):
                         # Skip predictions that were already matched as true positives
@@ -168,6 +172,7 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                             best_iou = iou
                             best_pred_class = self.classes[pred_class]
                             best_pred_idx = pred_idx
+                            best_pred_box = pred_boxes[pred_idx] if pred_idx >= 0 else None
                     
                     # Record the false negative
                     self.fn_matrix[gt_class_name][best_pred_class] += 1
@@ -178,8 +183,10 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                             'file_name': img_path,
                             'gt_instance_id': gt_instance_id,
                             'gt_class': gt_class_name,
+                            'gt_box': gt_box,  # Add ground truth box
                             'pred_instance_idx': best_pred_idx,
                             'pred_class': best_pred_class,
+                            'pred_box': best_pred_box.tolist() if best_pred_box is not None else None,  # Add prediction box
                             'iou': best_iou
                         }
                         self.fn_person_rider_details.append(detail)
@@ -188,8 +195,10 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
                             'file_name': img_path,
                             'gt_instance_id': gt_instance_id,
                             'gt_class': gt_class_name,
+                            'gt_box': gt_box,  # Add ground truth box
                             'pred_instance_idx': best_pred_idx,
                             'pred_class': best_pred_class,
+                            'pred_box': best_pred_box.tolist() if best_pred_box is not None else None,  # Add prediction box
                             'iou': best_iou
                         }
                         self.fn_rider_person_details.append(detail)
@@ -237,16 +246,40 @@ class MisclassificationAnalyzer(CityscapesInstanceEvaluator):
         person_rider_details_file = os.path.join(self._output_dir, "fn_person_rider_details.csv")
         rider_person_details_file = os.path.join(self._output_dir, "fn_rider_person_details.csv")
         
-        # Write detailed person-rider misclassification files
+        # Write detailed person-rider misclassification files with bounding box information
         with open(person_rider_details_file, "w") as f:
-            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,iou\n")
+            f.write("file_name,gt_instance_id,gt_class,gt_box_x_min,gt_box_y_min,gt_box_x_max,gt_box_y_max,pred_instance_idx,pred_class,pred_box_x_min,pred_box_y_min,pred_box_x_max,pred_box_y_max,iou\n")
             for detail in self.fn_person_rider_details:
-                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['iou']:.3f}\n")
+                gt_box = detail['gt_box']
+                pred_box = detail['pred_box']
+                
+                # Format ground truth box
+                gt_box_str = f"{gt_box[0]},{gt_box[1]},{gt_box[2]},{gt_box[3]}"
+                
+                # Format prediction box, handle None case
+                if pred_box is not None:
+                    pred_box_str = f"{pred_box[0]},{pred_box[1]},{pred_box[2]},{pred_box[3]}"
+                else:
+                    pred_box_str = ",,,"  # Empty values for missing box
+                
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{gt_box_str},{detail['pred_instance_idx']},{detail['pred_class']},{pred_box_str},{detail['iou']:.3f}\n")
                 
         with open(rider_person_details_file, "w") as f:
-            f.write("file_name,gt_instance_id,gt_class,pred_instance_idx,pred_class,iou\n")
+            f.write("file_name,gt_instance_id,gt_class,gt_box_x_min,gt_box_y_min,gt_box_x_max,gt_box_y_max,pred_instance_idx,pred_class,pred_box_x_min,pred_box_y_min,pred_box_x_max,pred_box_y_max,iou\n")
             for detail in self.fn_rider_person_details:
-                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{detail['pred_instance_idx']},{detail['pred_class']},{detail['iou']:.3f}\n")
+                gt_box = detail['gt_box']
+                pred_box = detail['pred_box']
+                
+                # Format ground truth box
+                gt_box_str = f"{gt_box[0]},{gt_box[1]},{gt_box[2]},{gt_box[3]}"
+                
+                # Format prediction box, handle None case
+                if pred_box is not None:
+                    pred_box_str = f"{pred_box[0]},{pred_box[1]},{pred_box[2]},{pred_box[3]}"
+                else:
+                    pred_box_str = ",,,"  # Empty values for missing box
+                
+                f.write(f"{detail['file_name']},{detail['gt_instance_id']},{detail['gt_class']},{gt_box_str},{detail['pred_instance_idx']},{detail['pred_class']},{pred_box_str},{detail['iou']:.3f}\n")
         
         # Write false negatives analysis
         with open(fn_file, "w") as f:
@@ -336,4 +369,4 @@ def main():
     return results
 
 if __name__ == "__main__":
-    main() 
+    main()
