@@ -76,9 +76,9 @@ class WrappedModel(torch.nn.Module):
             print(f"Class {self.class_names[i]}: {logits[i].item():.3f}")
         print("requires_grad?", logits.requires_grad)
         print("Logits shape:", logits.shape)
-        # return logits.unsqueeze(0)
-        print(logits[self.class_names.index("person")].view(1))
-        return logits[self.class_names.index("person")].view(1, 1)
+        return logits.unsqueeze(0)
+        # print(logits[self.class_names.index("person")].view(1))
+        # return logits[self.class_names.index("person")].view(1, 1)ok
         
 
 # --- Main SHAP logic ---
@@ -117,7 +117,7 @@ def compute_shap_for_row(cfg, model, row, use_masked_baseline=False):
         y2 = int(max(row["gt_box_y_max"], row["pred_box_y_max"]))
         baseline = image_tensor.clone()
         baseline[:, :, y1:y2, x1:x2] = blurred[:, :, y1:y2, x1:x2]
-        # baseline = blurred
+        baseline = blurred
         plt.imshow(baseline.squeeze(0).permute(1, 2, 0).cpu().detach().numpy().astype(np.uint8))
         plt.title("Baseline")
         plt.axis("off")
@@ -131,7 +131,7 @@ def compute_shap_for_row(cfg, model, row, use_masked_baseline=False):
     background = [baseline.clone().detach()]
     explainer = shap.GradientExplainer(wrapped_model, background)
 
-    shap_vals = explainer([image_tensor], nsamples=10)
+    shap_vals = explainer([image_tensor], nsamples=1)[class_idx]
 
     # shap_img = shap_vals.values[0].sum(0)
     # shap_img = shap_img.transpose(1, 2, 0)
