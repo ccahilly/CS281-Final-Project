@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import joblib
+import matplotlib.pyplot as plt
 
 from detectron2.config import get_cfg
 from detectron2.modeling import build_model
@@ -14,11 +15,10 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.utils.logger import setup_logger
 from detectron2.data import MetadataCatalog
 import detectron2.data.transforms as T
-from detectron2.structures import pairwise_iou
-from detectron2.structures import Boxes
-
+from detectron2.structures import pairwise_iou, Boxes
 
 import torch.nn.functional as F
+
 
 # --- Load config and model ---
 def setup_cfg():
@@ -38,13 +38,14 @@ class WrappedModel(torch.nn.Module):
         super().__init__()
         self.model = model
         self.cfg = cfg
-        self.target_box = target_box_tensor  # Tensor of shape [1, 4]
+        self.target_box = target_box_tensor
         self.class_names = MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes
 
     def _find_matching_instance(self, instances, iou_threshold=0.5):
         ious = pairwise_iou(instances.pred_boxes, Boxes(self.target_box))
         max_iou, idx = ious.max(dim=0)
         if max_iou > iou_threshold:
+            print(f"Matched IoU: {max_iou.item():.3f}")
             return int(idx.item())
         else:
             raise ValueError(f"No matching instance found with IoU > {iou_threshold:.2f}")
@@ -69,14 +70,16 @@ class WrappedModel(torch.nn.Module):
         matched_idx = self._find_matching_instance(instances)
         print(f"Box of matched instance {matched_idx}: {instances[matched_idx].pred_boxes.tensor.detach().cpu().numpy()}")
 
-        logits = instances.all_logits[matched_idx][:-1]  # drop background
+        logits = instances.all_logits[matched_idx][:-1]
 
         for i in range(len(logits)):
             print(f"Class {self.class_names[i]}: {logits[i].item():.3f}")
         print("requires_grad?", logits.requires_grad)
         print("Logits shape:", logits.shape)
-        return logits.unsqueeze(0)
-
+        # return logits.unsqueeze(0)
+        print(logits[self.class_names.index("person")].view(1))
+        return logits[self.class_names.index("person")].view(1, 1)
+        
 
 # --- Main SHAP logic ---
 def compute_shap_for_row(cfg, model, row, use_masked_baseline=False):
@@ -91,14 +94,12 @@ def compute_shap_for_row(cfg, model, row, use_masked_baseline=False):
     class_names = MetadataCatalog.get(cfg.DATASETS.TEST[0]).thing_classes
     class_idx = class_names.index(pred_class)
 
-    print(f"📂 Processing: {file_name} | Instance: {pred_instance_idx} | Class: {pred_class}")
+    print(f"\U0001F4C2 Processing: {file_name} | Instance: {pred_instance_idx} | Class: {pred_class}")
 
-    # Load and transform image
-    image = cv2.imread(file_name)[:, :, ::-1]  # BGR to RGB
-    transform_gen = T.ResizeShortestEdge(
-        [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST],
-        cfg.INPUT.MAX_SIZE_TEST
-    )
+    image = cv2.imread(file_name)[:, :, ::-1]
+    transform_gen = T.ResizeShortestEdge([
+        cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST
+    ], cfg.INPUT.MAX_SIZE_TEST)
     transform = transform_gen.get_transform(image)
     image_transformed = transform.apply_image(image)
     height, width = image_transformed.shape[:2]
@@ -107,44 +108,57 @@ def compute_shap_for_row(cfg, model, row, use_masked_baseline=False):
     image_tensor = image_tensor.unsqueeze(0)
     image_tensor.requires_grad_()
 
-    # Optional: create masked baseline
     if use_masked_baseline:
         print("Using masked baseline over union of GT and predicted boxes")
-
         blurred = F.avg_pool2d(image_tensor, kernel_size=15, stride=1, padding=7)
-
         x1 = int(min(row["gt_box_x_min"], row["pred_box_x_min"]))
         y1 = int(min(row["gt_box_y_min"], row["pred_box_y_min"]))
         x2 = int(max(row["gt_box_x_max"], row["pred_box_x_max"]))
         y2 = int(max(row["gt_box_y_max"], row["pred_box_y_max"]))
-
-        # Copy image and zero out union box area
         baseline = image_tensor.clone()
         baseline[:, :, y1:y2, x1:x2] = blurred[:, :, y1:y2, x1:x2]
-        import matplotlib.pyplot as plt; plt.imshow(baseline.squeeze(0).permute(1, 2, 0).cpu().detach().numpy().astype(np.uint8)); plt.title("Baseline"); plt.axis("off"); plt.show()
+        # baseline = blurred
+        plt.imshow(baseline.squeeze(0).permute(1, 2, 0).cpu().detach().numpy().astype(np.uint8))
+        plt.title("Baseline")
+        plt.axis("off")
+        plt.show()
     else:
         baseline = image_tensor
 
-    # SHAP for this instance + class
-    pred_box = torch.tensor([[
-        row["pred_box_x_min"],
-        row["pred_box_y_min"],
-        row["pred_box_x_max"],
-        row["pred_box_y_max"]
-    ]], device=cfg.MODEL.DEVICE).float()
+    pred_box = torch.tensor([[row["pred_box_x_min"], row["pred_box_y_min"], row["pred_box_x_max"], row["pred_box_y_max"]]], device=cfg.MODEL.DEVICE).float()
 
     wrapped_model = WrappedModel(model, cfg, pred_box)
-
     background = [baseline.clone().detach()]
-    explainer = shap.Explainer(wrapped_model, background)
+    explainer = shap.GradientExplainer(wrapped_model, background)
 
-    shap_vals = explainer(image_tensor, max_evals=12582913)
+    shap_vals = explainer([image_tensor], nsamples=10)
 
-    # Save results
+    # shap_img = shap_vals.values[0].sum(0)
+    # shap_img = shap_img.transpose(1, 2, 0)
+    # shap_img = np.abs(shap_img).mean(axis=-1)
+
+    # plt.imshow(image_transformed)
+    # plt.imshow(shap_img, cmap='jet', alpha=0.5)
+    # plt.title(f"SHAP overlay for {pred_class}")
+    # plt.axis("off")
+    # plt.show()
+
+    shap_img = shap_vals.values[0, 0]  # [H, W]
+    plt.imshow(image_transformed)
+    plt.imshow(np.abs(shap_img), cmap='jet', alpha=0.5)
+    plt.title(f"SHAP overlay for {pred_class}")
+    plt.axis("off")
+    plt.show()
+
     img_id = os.path.splitext(os.path.basename(file_name))[0]
     save_name = f"shap_values_{pred_class}_{img_id}_inst{pred_instance_idx}.pkl"
     save_path = os.path.join("output", save_name)
     joblib.dump(shap_vals, save_path)
+
+    del shap_vals
+    del wrapped_model
+    torch.cuda.empty_cache()
+    gc.collect()
 
 
 # --- CLI + main ---
